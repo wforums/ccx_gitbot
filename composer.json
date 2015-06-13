@@ -10,6 +10,6 @@
     }
   ],
   "require": {
-    "tan-tan-kanarek/github-php-client": "dev-master"
+    "knplabs/github-api": "1.4.11"
   }
 }
