@@ -12,3 +12,5 @@ repo_name = ""
 bot_name = ""
 # Allowed user id's (only these can send commands to the bot
 allowed_users = []
+# Database name
+database = "mydatabase.db"

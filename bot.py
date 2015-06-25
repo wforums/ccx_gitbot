@@ -1,4 +1,5 @@
 from github import GitHub
+import sqlite3
 import variables
 
 __author__ = 'Willem'
@@ -78,6 +79,9 @@ def run_through_comments(initial, comment_list, initial_type, initial_id):
         process_comment(initial, initial_type, initial_id)
 
 # Main loop
+conn = sqlite3.connect(variables.database)
+c = conn.cursor()
+
 for notification in notifications:
     if notification.repository.full_name == variables.repo_owner + "/" + \
             variables.repo_name:
@@ -109,3 +113,7 @@ for notification in notifications:
             variables.repo_name))
 # Marks notifications as read
 g.notifications().put()
+
+# Close the connection to the database
+c.close()
+conn.close()
