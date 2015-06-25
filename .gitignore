@@ -32,3 +32,4 @@ __pycache__/**
 # Variables contains the real data (passwords, tokens), so for security
 reasons it cannot be added.
 variables.py
+*.db
