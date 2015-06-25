@@ -15,7 +15,8 @@ c.execute('''CREATE TABLE `tests` (
 	`finished`	INTEGER NOT NULL DEFAULT 0,
 	`repository`	TEXT NOT NULL,
 	`branch`	TEXT NOT NULL,
-	`commit_hash`	TEXT NOT NULL
+	`commit_hash`	TEXT NOT NULL,
+	`type`	TEXT NOT NULL
 );''')
 c.execute('''CREATE TABLE `queue` (
 	`test_id`	INTEGER NOT NULL,
