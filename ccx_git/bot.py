@@ -2,8 +2,8 @@ import random
 import string
 from github import GitHub, ApiNotFoundError
 import sqlite3
+from ccx_git import botMessages
 import variables
-import botMessages
 
 __author__ = 'Willem'
 

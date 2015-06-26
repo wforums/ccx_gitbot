@@ -14,3 +14,7 @@ bot_name = ""
 allowed_users = []
 # Database name
 database = "mydatabase.db"
+# VBox username
+vbox_user = "user"
+# VBox password
+vbox_password = "password"
