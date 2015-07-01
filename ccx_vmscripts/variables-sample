@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# This script contains the variables which we don't want to post on GitHub
+# Copy this to variables, and fill this in.
+
+# URL to report towards
+reportURL="http://your-own-domain-here.com/reporter.php"
+# Shell script to launch the test suite
+tester="/path/to/shell/script"
+# The user agent we will use to send requests to the server (must correspond with the one in the ccx_admin folder)
+userAgent="My user agent string"
+# The folder that will be used to store the results in
+resultFolder="/path/to/temporary/folder"
+# The config XML that will be used as a base.
+config="/path/to/sampleConfig.xml"
+# The test file that will be ran by the test suite.
+testFile="/path/to/Test.xml"

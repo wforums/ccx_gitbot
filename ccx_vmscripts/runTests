@@ -1,0 +1,79 @@
+#!/bin/bash
+
+# This script will run the test suite, but it needs the next arguments for this:
+# - token
+# - github location (or just a git location that can be pulled using git clone xxx
+# - branch that needs to be switched to
+# - commit hash (short or long)
+#
+# All arguments are required
+
+if [ "$#" -ne 4 ]; then
+	echo "Illegal number of arguments provided!"
+	exit
+fi
+
+# Variables
+. ./variables
+
+# Set arguments as easier accessible variables
+token=$0
+github=$1
+branch=$2
+commit=$3
+
+# Functions to shorten the script
+
+# Post status to the server
+function postStatus {
+	wget $reportURL --user-agent=$userAgent --post-data "token=$token&type=progress&status=$0&message=$1"
+}
+# Exit script and post abort status
+function haltAndCatchFire {
+	postStatus "error" $0
+	shutdown -h now
+}
+# Fail when the exit status is not equal to 0
+function executeCommand {
+	"$@"
+	local status=$?
+	if [ $status -ne 0 ]; then
+		haltAndCatchFire "" # No message needed as we post before anyway
+	fi
+}
+
+postStatus "preparation" "git clone"
+# Clone into git directory
+executeCommand git clone $github ccextractor
+
+postStatus "preparation" "change branch"
+# Change to github folder
+executeCommand cd ccextractor
+# Checkout the branch
+executeCommand git -checkout $branch
+
+postStatus "preparation" "reverting to commit"
+# Reset head to the commit
+executeCommand git reset --hard $commit
+
+postStatus "preparation" "building CCExtractor"
+# Go to linux build folder
+executeCommand cd linux
+# Build CCExtractor using the bash build script
+./build
+# Check if build succeeded
+if [ -x "ccextractor" ]; then
+	chmod 700 ccextractor
+	# Run testSuite
+	postStatus "running" "test suite"
+	executeCommand $tester -c $config -t $testFile -e ./ccextractor -r $resultFolder
+	# Upload results
+	postStatus "finalization" "uploading result files"
+	for f in $resultFolder"/*.html"
+	do
+		curl -A $userAgent -F "token=$token" -F "type=upload" -F "html=@$f" $reportURL
+	done
+	postStatus "finalized" "finished"
+else
+	haltAndCatchFire "build"
+fi
