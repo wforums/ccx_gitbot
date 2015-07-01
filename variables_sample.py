@@ -5,15 +5,15 @@ __author__ = 'Willem'
 # Token used by the bot
 token = ""
 # Owner (organisation/user) of the repository we check on
-repo_owner = ""
+repo_owner = "RepositoryOwner"
 # Repository name that we limit ourselves to.
-repo_name = ""
+repo_name = "RepositoryName"
 # Name of the bot
-bot_name = ""
+bot_name = "MyGitHubUsernameHere"
 # Allowed user id's (only these can send commands to the bot
 allowed_users = []
 # Database name
-database = "mydatabase.db"
+database = "/path/to/mydatabase.db"
 # VBox username
 vbox_user = "user"
 # VBox password

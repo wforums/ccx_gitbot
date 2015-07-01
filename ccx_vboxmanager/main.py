@@ -1,5 +1,5 @@
-import sys
 import traceback
+import sqlite3
 import virtualbox
 import time
 import virtualbox.library as library
@@ -8,6 +8,29 @@ import variables
 
 __author__ = 'Willem'
 
+# Get last queue item
+conn = sqlite3.connect(variables.database)
+c = conn.cursor()
+c.execute("SELECT test_id FROM queue ORDER BY ROWID ASC LIMIT 1")
+result = c.fetchone()
+if result is None:
+    print("No items in queue left. Aborting")
+    exit()
+
+test_id = result[0]
+print("Processing id {0}".format(test_id))
+c.execute("SELECT token, repository, branch, commit_hash, type FROM tests "
+          "WHERE id = ?", (test_id,))
+result = c.fetchone()
+print("Running tests for {repo} (branch {branch}, commit {commit}) with "
+      "token {token}".format(repo=result[1], branch=result[2],
+                             commit=result[3], token=result[0]))
+c.close()
+conn.close()
+
+exit()
+
+# Setting up VBox
 vbox = virtualbox.VirtualBox()
 session = virtualbox.Session()
 

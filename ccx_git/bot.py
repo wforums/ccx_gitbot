@@ -81,6 +81,8 @@ def store_in_queue(fork, branch, original_id, original_type):
     # Trailing comma is necessary or python will give a ValueError.
     c.execute("INSERT INTO `queue` (`test_id`) VALUES (?);",(c.lastrowid,))
     conn.commit()
+    # TODO: if queue has just a single item (which was just added, launch
+    # the VM process
     c.close()
     conn.close()
 
