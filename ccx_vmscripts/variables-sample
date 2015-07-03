@@ -15,3 +15,5 @@ resultFolder="/path/to/temporary/folder"
 config="/path/to/sampleConfig.xml"
 # The test file that will be ran by the test suite.
 testFile="/path/to/Test.xml"
+# Vbox userscript
+vbox_script = "/path/to/script"

@@ -1,13 +1,11 @@
 <?php
-/**
- * Created by PhpStorm.
- * User: Willem
- */
 use org\ccextractor\githubbot\StatusHandler;
 
 include_once "variables.php";
+include_once "Status.php";
+include_once "StatusHandler.php";
 
-$statusHandler = new StatusHandler(CCX_SQLITE_DB_NAME);
+$statusHandler = new StatusHandler(DATABASE_SOURCE_NAME,DATABASE_USERNAME,DATABASE_PASSWORD,CCX_VBOX_MANAGER);
 
 $command = "INVALID COMMAND";
 // This script handles only POST requests that have a type parameter and a token set, AND has the correct user agent
@@ -29,5 +27,4 @@ if($_SERVER['HTTP_USER_AGENT'] === CCX_USER_AGENT) {
     }
 }
 echo $command;
-$statusHandler->finish();
 exit();

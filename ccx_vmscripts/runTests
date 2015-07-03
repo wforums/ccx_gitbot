@@ -17,21 +17,21 @@ fi
 . ./variables
 
 # Set arguments as easier accessible variables
-token=$0
-github=$1
-branch=$2
-commit=$3
+token=$1
+github=$2
+branch=$3
+commit=$4
 
 # Functions to shorten the script
 
 # Post status to the server
 function postStatus {
-	wget $reportURL --user-agent=$userAgent --post-data "token=$token&type=progress&status=$0&message=$1"
+    curl -A "$userAgent" --data "token=$token&type=progress&status=$1&message=$2" $reportURL
 }
 # Exit script and post abort status
 function haltAndCatchFire {
-	postStatus "error" $0
-	shutdown -h now
+	postStatus "error" $1
+	/sbin/shutdown -h now
 }
 # Fail when the exit status is not equal to 0
 function executeCommand {
@@ -71,7 +71,7 @@ if [ -x "ccextractor" ]; then
 	postStatus "finalization" "uploading result files"
 	for f in $resultFolder"/*.html"
 	do
-		curl -A $userAgent -F "token=$token" -F "type=upload" -F "html=@$f" $reportURL
+		curl -A "$userAgent" -form "token=$token" -form "type=upload" -form "html=@$f" $reportURL
 	done
 	postStatus "finalized" "finished"
 else
