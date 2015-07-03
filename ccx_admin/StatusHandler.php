@@ -2,8 +2,8 @@
 
 namespace org\ccextractor\githubbot;
 
-
-use SQLite3;
+use PDO;
+use PDOException;
 
 /**
  * Class StatusHandler handles an incoming request and takes care of storing/updating the database, as well as launching
@@ -13,51 +13,66 @@ use SQLite3;
  * @package org\ccextractor\githubbot
  */
 class StatusHandler {
-    private $sqlite;
+    /**
+     * @var PDO
+     */
+    private $pdo;
+    /**
+     * @var string
+     */
     private $pythonScript;
 
-    function __construct($database, $pythonScript)
+    function __construct($dsn,$username,$password, $pythonScript)
     {
-        $this->sqlite = new SQLite3($database);
+        $this->pdo = new PDO($dsn,$username,$password, [
+            PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8",
+            PDO::ATTR_PERSISTENT => true
+        ]);
+        $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $this->pythonScript = $pythonScript;
     }
 
     private function save_status($id,$status,$message){
-        $p = $this->sqlite->prepare("INSERT INTO messages VALUES (NULL, :test_id, date('now'), :status, :message);");
-        $p->bindParam(":test_id",$id,SQLITE3_INTEGER);
-        $p->bindParam(":status",$status,SQLITE3_TEXT);
-        $p->bindParam(":message",$message,SQLITE3_TEXT);
+        $p = $this->pdo->prepare("INSERT INTO test_progress VALUES (NULL, :test_id, NOW(), :status, :message);");
+        $p->bindParam(":test_id",$id,PDO::PARAM_INT);
+        $p->bindParam(":status",$status,PDO::PARAM_STR);
+        $p->bindParam(":message",$message,PDO::PARAM_STR);
         return ($p->execute() !== false);
     }
 
     private function mark_finished($id)
     {
-        $p = $this->sqlite->prepare("UPDATE tests SET finished = 1 WHERE id = :id");
-        $p->bindParam(":id",$id,SQLITE3_INTEGER);
-        if ($p->execute() !== false) {
-            $p = $this->sqlite->prepare("DELETE FROM queue WHERE test_id = :test_id LIMIT 1");
-            $p->bindParam(":test_id", $id, SQLITE3_INTEGER);
-            if($p->execute() !== false){
+        if($this->pdo->beginTransaction()){
+            try {
+                $p = $this->pdo->prepare("UPDATE test SET finished = 1 WHERE id = :id");
+                $p->bindParam(":id",$id,PDO::PARAM_INT);
+                $p->execute();
+                $p = $this->pdo->prepare("DELETE FROM test_queue WHERE test_id = :test_id LIMIT 1");
+                $p->bindParam(":test_id", $id, PDO::PARAM_INT);
+                $p->execute();
+                $this->pdo->commit();
                 // If there's still one or multiple items left in the queue, we'll need to give the python script a
                 // kick so it processes the next item.
-                $remaining = $this->sqlite->query("SELECT COUNT(*) AS 'left' FROM queue");
-                if($remaining !== false && $remaining !== true){
-                    $data = $remaining->fetchArray(SQLITE3_ASSOC);
+                $remaining = $this->pdo->query("SELECT COUNT(*) AS 'left' FROM test_queue");
+                if($remaining !== false){
+                    $data = $remaining->fetch();
                     if($data['left'] > 0){
                         // Call python script
                         exec("python ".$this->pythonScript." &");
                     }
                 }
+            } catch(PDOException $e){
+                $this->pdo->rollBack();
             }
         }
+
     }
 
     public function validate_token($token){
-        $prep = $this->sqlite->prepare("SELECT id FROM tests WHERE token = :token AND finished = 0 LIMIT 1;");
-        $prep->bindParam(":token", $token, SQLITE3_TEXT);
-        $result = $prep->execute();
-        if($result !== false){
-            $data = $result->fetchArray(SQLITE3_ASSOC);
+        $prep = $this->pdo->prepare("SELECT id FROM tests WHERE token = :token AND finished = 0 LIMIT 1;");
+        $prep->bindParam(":token", $token, PDO::PARAM_STR);
+        if($prep->execute() !== false){
+            $data = $prep->fetch();
             return $data['id'];
         }
         return -1;
@@ -88,13 +103,8 @@ class StatusHandler {
 
     public function handle_upload($id){
         $result = "INVALID COMMAND";
-
+        // TODO: finish
 
         return $result;
-    }
-
-    public function finish()
-    {
-        $this->sqlite->close();
     }
 }

@@ -7,7 +7,12 @@
  */
 // User agent, must be equal to the user agent in ccx_vmscripts/variables(-sample)
 define("CCX_USER_AGENT","My user agent string");
-// SQLite database location (must be equal to the one in variables(_sample).py
-define("CCX_SQLITE_DB_NAME","/path/to/mydatabase.db");
 // Path to the python vboxmanager script
 define("CCX_VBOX_MANAGER","/path/to/vbox/manager.py");
+// MySQL database source name
+define("DATABASE_SOURCE_NAME","mysql:dbname=MYDATABASENAME;host=localhost");
+// MySQL username
+define("DATABASE_USERNAME","MYUSERNAME");
+// MySQL password
+define("DATABASE_PASSWORD","MYPASSWORD");
+
