@@ -1,7 +1,7 @@
 import random
 import string
 from github import GitHub, ApiNotFoundError
-import sqlite3
+import pymysql
 from ccx_git import botMessages
 import variables
 
@@ -48,7 +48,6 @@ def is_valid_branch(repository_owner, branch):
     except ApiNotFoundError:
         return False
 
-
 def generate_random_string(length=32, chars=string.ascii_uppercase +
                                             string.digits):
     """
@@ -60,7 +59,6 @@ def generate_random_string(length=32, chars=string.ascii_uppercase +
     """
     return ''.join(random.SystemRandom().choice(chars) for _ in range(length))
 
-
 def store_in_queue(fork, branch, original_id, original_type):
     """
     Adds an entry into the database so that it can be processed later.
@@ -71,28 +69,36 @@ def store_in_queue(fork, branch, original_id, original_type):
     :param original_type: The type (Commit/PR/Issue)
     :return:
     """
-    conn = sqlite3.connect(variables.database)
-    c = conn.cursor()
-    token = generate_random_string(32)
-    c.execute("INSERT INTO `tests`(`id`,`token`,`repository`,`branch`,"
-              "`commit_hash`, `type`) VALUES (NULL,?,?,?,?,?);",
-              (token, fork, branch, original_id, original_type))
-    conn.commit()
-    # Trailing comma is necessary or python will give a ValueError.
-    c.execute("INSERT INTO `queue` (`test_id`) VALUES (?);",(c.lastrowid,))
-    conn.commit()
-    # TODO: if queue has just a single item (which was just added, launch
-    # the VM process
-    c.close()
-    conn.close()
+    conn = pymysql.connect(host=variables.database_host,
+                           user=variables.database_user,
+                           passwd=variables.database_password,
+                           db=variables.database_name,
+                           charset='latin1',
+                           cursorclass=pymysql.cursors.DictCursor)
+    try:
+        with conn.cursor() as c:
+            token = generate_random_string(32)
+            c.execute(
+                "INSERT INTO `test`(`id`,`token`,`repository`,`branch`,"
+                "`commit_hash`, `type`) VALUES (NULL,%s,%s,%s,%s,%s);",
+                (token, fork, branch, original_id, original_type))
+            conn.commit()
+            # Trailing comma is necessary or python will give a ValueError.
+            c.execute("INSERT INTO `test_queue` (`test_id`) VALUES (%s);",
+                      (c.lastrowid,))
+            conn.commit()
+            # TODO: if queue has just a single item (which was just added, launch
+            # the VM process
 
+    finally:
+        conn.close()
 
-def process_comment(message, messageIdx, original_type, original_id, \
-                                  repository_owner, fork):
+def process_comment(message, message_idx, original_type, original_id,
+                    repository_owner, fork):
     """
     Processes a comment and executes the given (valid) commands.
     :param message: The message to process.
-    :param messageIdx: The index of the message.
+    :param message_idx: The index of the message.
     :param original_type: The type (issue, pull request) where the command
     is coming from.
     :param original_id: The original issue/PR id.
@@ -103,6 +109,7 @@ def process_comment(message, messageIdx, original_type, original_id, \
     body = message.lower()
     words = body.split()
     print(words)
+    # TODO: store command in history list
     if "runtests" in words:
         if original_type == "Commit":
             # We need to have a branch as well...

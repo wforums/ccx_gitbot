@@ -10,10 +10,16 @@ repo_owner = "RepositoryOwner"
 repo_name = "RepositoryName"
 # Name of the bot
 bot_name = "MyGitHubUsernameHere"
-# Allowed user id's (only these can send commands to the bot
-allowed_users = []
+
+# Database location
+database_host = "localhost"
 # Database name
-database = "/path/to/mydatabase.db"
+database_name = "db name here"
+# Database user
+database_user = "db user here"
+# Database user password
+database_password = "db user pass here"
+
 # VBox username
 vbox_user = "user"
 # VBox password
