@@ -1,5 +1,5 @@
 import traceback
-import sqlite3
+import pymysql
 import virtualbox
 import time
 import virtualbox.library as library
@@ -9,12 +9,23 @@ import variables
 __author__ = 'Willem'
 
 # Get last queue item
-conn = sqlite3.connect(variables.database)
-c = conn.cursor()
-c.execute("SELECT test_id FROM queue ORDER BY ROWID ASC LIMIT 1")
-result = c.fetchone()
+conn = pymysql.connect(host=variables.database_host,
+                       user=variables.database_user,
+                       passwd=variables.database_password,
+                       db=variables.database_name,
+                       charset='latin1',
+                       cursorclass=pymysql.cursors.DictCursor)
+
+result = None
+try:
+    with conn.cursor() as c:
+        c.execute("SELECT test_id FROM queue ORDER BY ROWID ASC LIMIT 1")
+        result = c.fetchone()
+finally:
+    conn.close()
+
 if result is None:
-    print("No items in queue left. Aborting")
+    print("No items in queue left, aborting...")
     exit()
 
 test_id = result[0]

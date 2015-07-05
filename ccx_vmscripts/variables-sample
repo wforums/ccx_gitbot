@@ -5,15 +5,21 @@
 
 # URL to report towards
 reportURL="http://your-own-domain-here.com/reporter.php"
+# Directory to clone the repository into
+repoDir="/path/to/ccextractor/repository"
+# Directory where the test suite is located
+testerDir = "/path/to/test/suite"
 # Shell script to launch the test suite
-tester="/path/to/shell/script"
+tester="./ccextractortester"
 # The user agent we will use to send requests to the server (must correspond with the one in the ccx_admin folder)
 userAgent="My user agent string"
 # The folder that will be used to store the results in
 resultFolder="/path/to/temporary/folder"
 # The config XML that will be used as a base.
 config="/path/to/sampleConfig.xml"
-# The test file that will be ran by the test suite.
-testFile="/path/to/Test.xml"
+# Location of the samples
+sampleFolder="/path/to/test/files"
+# Testfile location
+testFile="$sampleFolder/testfile.xml"
 # Vbox userscript
 vbox_script = "/path/to/script"

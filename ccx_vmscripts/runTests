@@ -44,13 +44,13 @@ function executeCommand {
 
 postStatus "preparation" "git clone"
 # Clone into git directory
-executeCommand git clone $github ccextractor
+executeCommand git clone $github "$repoDir"
 
 postStatus "preparation" "change branch"
 # Change to github folder
-executeCommand cd ccextractor
+executeCommand cd "$repoDir"
 # Checkout the branch
-executeCommand git -checkout $branch
+executeCommand git checkout $branch
 
 postStatus "preparation" "reverting to commit"
 # Reset head to the commit
@@ -65,13 +65,16 @@ executeCommand cd linux
 if [ -x "ccextractor" ]; then
 	chmod 700 ccextractor
 	# Run testSuite
+	postStatus "running" "creating result folder"
+	executeCommand mkdir $resultFolder
 	postStatus "running" "test suite"
-	executeCommand $tester -c $config -t $testFile -e ./ccextractor -r $resultFolder
+	executeCommand cd "$testerDir"
+	executeCommand $tester -c $config -t $testFile -s $samplefolder -e "$repoDir/linux/ccextractor" -r $resultFolder
 	# Upload results
 	postStatus "finalization" "uploading result files"
-	for f in $resultFolder"/*.html"
+	for f in $(find $reportFolder -name "*.html");
 	do
-		curl -A "$userAgent" -form "token=$token" -form "type=upload" -form "html=@$f" $reportURL
+		curl -A "$userAgent" --form "token=$token" --form "type=upload" --form "html=@$f" $reportURL
 	done
 	postStatus "finalized" "finished"
 else

@@ -37,7 +37,7 @@ class StatusHandler {
         $p->bindParam(":test_id",$id,PDO::PARAM_INT);
         $p->bindParam(":status",$status,PDO::PARAM_STR);
         $p->bindParam(":message",$message,PDO::PARAM_STR);
-        return ($p->execute() !== false);
+        return ($p->execute() !== false)?"OK":"ERROR";
     }
 
     private function mark_finished($id)
@@ -65,11 +65,10 @@ class StatusHandler {
                 $this->pdo->rollBack();
             }
         }
-
     }
 
     public function validate_token($token){
-        $prep = $this->pdo->prepare("SELECT id FROM tests WHERE token = :token AND finished = 0 LIMIT 1;");
+        $prep = $this->pdo->prepare("SELECT id FROM test WHERE token = :token AND finished = 0 LIMIT 1;");
         $prep->bindParam(":token", $token, PDO::PARAM_STR);
         if($prep->execute() !== false){
             $data = $prep->fetch();
@@ -86,11 +85,11 @@ class StatusHandler {
                 case Status::$PREPARATION:
                 case Status::$RUNNING:
                 case Status::$FINALIZATION:
-                    $this->save_status($id,$_POST["status"],$_POST["message"]);
+                    $result = $this->save_status($id,$_POST["status"], $_POST["message"]);
                     break;
                 case Status::$FINALIZED:
                 case Status::$ERROR:
-                    $this->save_status($id,$_POST["status"],$_POST["message"]);
+                    $result = $this->save_status($id,$_POST["status"], $_POST["message"]);
                     $this->mark_finished($id);
                     // TODO: report back to github
                     break;
@@ -101,10 +100,41 @@ class StatusHandler {
         return $result;
     }
 
+    /**
+     * Borrowed from http://stackoverflow.com/questions/834303/startswith-and-endswith-functions-in-php
+     *
+     * @param string $haystack The string to search in.
+     * @param string $needle The string to search
+     *
+     * @return bool True if found, false otherwise.
+     */
+    private function endsWith($haystack, $needle) {
+        // search forward starting from end minus needle length characters
+        return $needle === "" || (($temp = strlen($haystack) - strlen($needle)) >= 0 && strpos($haystack, $needle, $temp) !== FALSE);
+    }
+
     public function handle_upload($id){
         $result = "INVALID COMMAND";
-        // TODO: finish
-
+        // Check if a file was provided
+        if(array_key_exists("html",$_FILES)){
+            // File data
+            $data = $_FILES["html"];
+            // Do a couple of basic checks. We expect html
+            if($this->endsWith($data["name"],".html") && $data["type"] === "text/html" && $data["error"] === UPLOAD_ERR_OK){
+                // Create new folder for id if necessary
+                $dir = "reports/".$id."/";
+                if(!file_exists($dir)){
+                    mkdir($dir);
+                }
+                // Copy file to the directory
+                move_uploaded_file($data["tmp_name"],$dir.basename($data["name"]));
+                $result = "OK";
+            } else {
+                // Delete temp file
+                @unlink($data["tmp_name"]);
+                $result = "FAIL";
+            }
+        }
         return $result;
     }
 }
