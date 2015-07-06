@@ -2,6 +2,8 @@
 
 namespace org\ccextractor\githubbot;
 
+use DOMDocument;
+use DOMNode;
 use PDO;
 use PDOException;
 
@@ -21,6 +23,10 @@ class StatusHandler {
      * @var string
      */
     private $pythonScript;
+    /**
+     * @var string
+     */
+    private $reportFolder = "reports";
 
     function __construct($dsn,$username,$password, $pythonScript)
     {
@@ -91,7 +97,7 @@ class StatusHandler {
                 case Status::$ERROR:
                     $result = $this->save_status($id,$_POST["status"], $_POST["message"]);
                     $this->mark_finished($id);
-                    // TODO: report back to github
+                    $this->queue_github_comment($id,$_POST["status"]);
                     break;
                 default:
                     break;
@@ -122,7 +128,7 @@ class StatusHandler {
             // Do a couple of basic checks. We expect html
             if($this->endsWith($data["name"],".html") && $data["type"] === "text/html" && $data["error"] === UPLOAD_ERR_OK){
                 // Create new folder for id if necessary
-                $dir = "reports/".$id."/";
+                $dir = $this->reportFolder."/".$id."/";
                 if(!file_exists($dir)){
                     mkdir($dir);
                 }
@@ -136,5 +142,70 @@ class StatusHandler {
             }
         }
         return $result;
+    }
+
+    private function queue_github_comment($id, $status)
+    {
+        $message = "";
+        switch($status){
+            case Status::$FINALIZED:
+                // Fetch index.html, parse it and convert to a MD table
+                $index = $this->reportFolder."/".$id."/index.html";
+                if(file_exists($index)){
+                    $dom = new DOMDocument();
+                    $dom->loadHTMLFile($index);
+                    $tables = $dom->getElementsByTagName("table");
+                    if($tables->length > 0){
+                        $table = $tables->item(0);
+                        // Convert table to markdown
+                        $md = "";
+                        $errors = false;
+                        /** @var DOMNode $row */
+                        foreach($table->childNodes as $row){
+                            if($row->hasChildNodes()){
+                                $md .= "|";
+                                /** @var DOMNode $cell */
+                                foreach($row->childNodes as $cell){
+                                    if($cell->nodeType === XML_ELEMENT_NODE) {
+                                        $bold = "";
+                                        if($cell->hasAttributes()){
+                                            $attr = $cell->attributes->getNamedItem("class");
+                                            if($attr !== null){
+                                                if($attr->nodeValue === "red"){
+                                                    $bold="**";
+                                                    $errors = true;
+                                                }
+                                            }
+                                        }
+                                        $md .= " " . $bold . $cell->textContent . $bold . " |";
+                                    }
+
+                                }
+                                $md .= "\r\n";
+                            }
+                        }
+                        if($errors){
+                            $md .= "It seems there were some errors. Please check the status and results page, and verify these.";
+                        }
+                        $message = "The test suite completed it's run. This is a summary (full info can be found on the status page:\r\n\r\n".$md;
+                    } else {
+                        $message = "The index file contained invalid contents. Please check the status page, and get in touch with us in case of an error!";
+                    }
+                } else {
+                    $message = "There is no index file available. Please check the status page, and get in touch with us in case of an error!";
+                }
+                break;
+            case Status::$ERROR:
+                $message = "An error occurred while running the tests. Please check the status page, and correct the error.";
+                break;
+            default:
+                break;
+        }
+        if($message !== ""){
+            $stmt = $this->pdo->prepare("INSERT INTO github_queue VALUES(NULL,:id,:message);");
+            $stmt->bindParam(":id",$id,PDO::PARAM_INT);
+            $stmt->bindParam(":message",$message,PDO::PARAM_STR);
+            $stmt->execute();
+        }
     }
 }

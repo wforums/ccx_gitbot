@@ -59,3 +59,37 @@ CREATE TABLE `test_queue` (
   PRIMARY KEY (`test_id`),
   CONSTRAINT `FK_test_queue_test` FOREIGN KEY (`test_id`) REFERENCES `test` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+/*Table structure for table `local_queue` */
+
+DROP TABLE IF EXISTS `local_queue`;
+
+CREATE TABLE `local_queue` (
+  `test_id` int(11) NOT NULL,
+  PRIMARY KEY (`test_id`),
+  CONSTRAINT `FK_local_queue_test` FOREIGN KEY (`test_id`) REFERENCES `test` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+/*Table structure for table `local_repos` */
+
+DROP TABLE IF EXISTS `local_repos`;
+
+CREATE TABLE `local_repos` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `github` text NOT NULL,
+  `local` text NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+/*Table structure for table `github_queue` */
+
+DROP TABLE IF EXISTS `github_queue`;
+
+CREATE TABLE `github_queue` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `test_id` int(11) NOT NULL,
+  `message` text NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `FK_github_queue_test` (`test_id`),
+  CONSTRAINT `FK_github_queue_test` FOREIGN KEY (`test_id`) REFERENCES `test` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
