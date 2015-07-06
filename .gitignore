@@ -27,11 +27,10 @@ com_crashlytics_export_strings.xml
 crashlytics.properties
 crashlytics-build.properties
 
-__pycache__/**
+**/__pycache__/**
 
 # Variables contains the real data (passwords, tokens), so for security
 reasons it cannot be added.
-variables.py
-ccx_admin/variables.php
-ccx_vmscripts/variables
-*.db
+bot/configuration.py
+server/variables.php
+virtual_machine/variables
