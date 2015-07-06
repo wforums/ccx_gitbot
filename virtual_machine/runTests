@@ -69,7 +69,7 @@ if [ -x "ccextractor" ]; then
 	executeCommand mkdir $resultFolder
 	postStatus "running" "test suite"
 	executeCommand cd "$testerDir"
-	executeCommand $tester -c $config -t $testFile -s $samplefolder -e "$repoDir/linux/ccextractor" -r $resultFolder
+	executeCommand $tester -o 3000 -c $config -t $testFile -s $samplefolder -e "$repoDir/linux/ccextractor" -r $resultFolder
 	# Upload results
 	postStatus "finalization" "uploading result files"
 	for f in $(find $reportFolder -name "*.html");
