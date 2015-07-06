@@ -15,4 +15,5 @@ define("DATABASE_SOURCE_NAME","mysql:dbname=MYDATABASENAME;host=localhost");
 define("DATABASE_USERNAME","MYUSERNAME");
 // MySQL password
 define("DATABASE_PASSWORD","MYPASSWORD");
-
+// Admin password
+define("ADMIN_PASSWORD","The admin password");
