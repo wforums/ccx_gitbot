@@ -1,7 +1,7 @@
 <?php
 session_start();
 
-include "variables.php";
+include "../private/variables.php";
 
 if(!isset($_SESSION["login"])) {
     $_SESSION["login"] = false;
