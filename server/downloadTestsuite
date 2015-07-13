@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# This script will fetch a given version of CCEXtractorTester from GitHub, extract it and move the executable to a given
+ folder.
+
+DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+
+# Variables
+. "$DIR/variables"
+
+if [ -z "$1" ]; then
+	echo "Need to provide a version!"
+	exit
+fi
+wget https://github.com/wforums/CCExtractorTester/releases/download/$1/CCExtractorTester.tar.gz
+tar -xf CCExtractorTester.tar.gz
+cd CCExtractorTester
+chmod 700 CCExtractorTester.exe
+cp CCExtractorTester.exe "$testSuiteFolder/CCextractorTester.exe"
