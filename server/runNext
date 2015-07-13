@@ -21,4 +21,4 @@ DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 token=$1
 
 # Ping bot server with POST
-curl -s -A "$userAgent" --data "token=$token" -w "\n" $reportURL
+curl -s -A "$userAgent" --data "token=$token" -w "\n" $botURL
