@@ -1,0 +1,26 @@
+#!/bin/bash
+
+# This script can check if a certain VM exists (if it does it will be powered down and deleted), followed by an import
+# of an .OVA file at a fixed location, a snapshot and finally a fix for the adapter names (Windows VBox insists on
+# naming them 'VirtualBox Host-Only Ethernet Adapter x', while on Linux it's 'vboxnetX').
+
+DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+
+# Variables
+. "$DIR/variables"
+
+# Check if machine exists by obtaining vm info
+VBoxManage showvminfo $vmName &> /dev/null
+
+if [ $? == 0 ]; then
+	echo "Machine exists, powering down & removing"
+	VBoxManage controlvm $vmName poweroff
+	VBoxManage unregistervm $vmName --delete
+fi
+echo "Importing"
+VBoxManage import $locationOfOVA
+echo "Making snapshot"
+VBoxManage snapshot $vmName take base
+echo "Replacing adapter names with vboxnet0"
+sed -i 's/VirtualBox Host-Only Ethernet Adapter/vboxnet0/g' "$vmLocation/$vmName/$vmName.vbox"
+echo "Thanks :)"

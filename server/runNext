@@ -1,0 +1,24 @@
+#!/bin/bash
+
+# This script will ping the bot server, which can then fetch the request that needs to be run locally
+#
+# Required variables:
+# - Token
+
+if [ "$#" -ne 1 ]; then
+	echo "Illegal number of arguments provided!"
+	echo "Expected 1 arguments, got $#"
+	echo "Given arguments: $@"
+	exit
+fi
+
+DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+
+# Variables
+. "$DIR/variables"
+
+# Set arguments as easy access variables
+token=$1
+
+# Ping bot server with POST
+curl -s -A "$userAgent" --data "token=$token" -w "\n" $reportURL
