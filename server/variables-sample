@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# This script contains the variables which we don't want to post on GitHub
+# Copy this to variables, and fill this in.
+
+# URL of the bot that will be pinged
+botURL="http://url.to/command.php"
+# The user agent we will use to send requests to the server (must correspond with the one in the worker folder)
+userAgent="My User Agent Here"
+# VM name
+vmName="My VM name"
+# OVA location
+locationOfOVA="path/to/my.ova"
+# Base folder where the VM's are stored
+vmLocation="/home/user/VirtualBox VMs"
+# Folder where the Test Suite Executable should be copied to
+testSuiteFolder="/path/to/TestSuite"
