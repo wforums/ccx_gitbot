@@ -21,5 +21,7 @@ config="/path/to/sampleConfig.xml"
 sampleFolder="/path/to/test/files"
 # Testfile location
 testFile="$sampleFolder/testfile.xml"
-# Vbox userscript
-vbox_script = "/path/to/script"
+# The folder that contains the correct results
+resultFolder="/path/to/correct/results"
+# The newest test suite version
+newTestSuite="/path/to/testsuite/folder"

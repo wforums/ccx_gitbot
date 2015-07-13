@@ -7,14 +7,17 @@
 # - commit hash (short or long)
 #
 # All arguments are required
-
 if [ "$#" -ne 4 ]; then
 	echo "Illegal number of arguments provided!"
+	echo "Expected 4 arguments, got $#"
+	echo "Given arguments: $@"
 	exit
 fi
 
+DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+
 # Variables
-. ./variables
+. "$DIR/variables"
 
 # Set arguments as easier accessible variables
 token=$1
@@ -26,21 +29,28 @@ commit=$4
 
 # Post status to the server
 function postStatus {
-    curl -A "$userAgent" --data "token=$token&type=progress&status=$1&message=$2" $reportURL
+    curl -s -A "$userAgent" --data "token=$token&type=progress&status=$1&message=$2" -w "\n" $reportURL >> "$reportFolder/log.html"
 }
 # Exit script and post abort status
 function haltAndCatchFire {
-	postStatus "error" $1
-	/sbin/shutdown -h now
+	postStatus "error" $1 >> "$reportFolder/log.html"
+	curl -s -A "$userAgent" --form "token=$token" --form "type=upload" --form "html=@$reportFolder/log.html" -w "\n" $reportURL
+	sudo shutdown -h now
+	#echo "Would shut down now"
+	#exit
 }
 # Fail when the exit status is not equal to 0
 function executeCommand {
-	"$@"
+	#echo "$@" 
+	"$@" >> "$reportFolder/log.html"
 	local status=$?
 	if [ $status -ne 0 ]; then
 		haltAndCatchFire "" # No message needed as we post before anyway
 	fi
 }
+
+# Copy the latest version of the test suite from the repo to the test folder
+cp "$newTestSuite/CCExtractorTester.exe" $testerDir >> "$reportFolder/log.html"
 
 postStatus "preparation" "git clone"
 # Clone into git directory
@@ -60,21 +70,19 @@ postStatus "preparation" "building CCExtractor"
 # Go to linux build folder
 executeCommand cd linux
 # Build CCExtractor using the bash build script
-./build
+./build >> "$reportFolder/log.html"
 # Check if build succeeded
 if [ -x "ccextractor" ]; then
 	chmod 700 ccextractor
 	# Run testSuite
-	postStatus "running" "creating result folder"
-	executeCommand mkdir $resultFolder
 	postStatus "running" "test suite"
 	executeCommand cd "$testerDir"
-	executeCommand $tester -o 3000 -c $config -t $testFile -s $samplefolder -e "$repoDir/linux/ccextractor" -r $resultFolder
+	executeCommand $tester -c $config -t $testFile -e "$repoDir/linux/ccextractor" -o 3000 -f $resultFolder -s $sampleFolder -r $reportFolder
 	# Upload results
 	postStatus "finalization" "uploading result files"
 	for f in $(find $reportFolder -name "*.html");
 	do
-		curl -A "$userAgent" --form "token=$token" --form "type=upload" --form "html=@$f" $reportURL
+		curl -A "$userAgent" --form "token=$token" --form "type=upload" --form "html=@$f" -w "\n" $reportURL >> "$reportFolder/log.html"
 	done
 	postStatus "finalized" "finished"
 else
