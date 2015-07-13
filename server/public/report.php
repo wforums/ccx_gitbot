@@ -1,9 +1,9 @@
 <?php
 use org\ccextractor\githubbot\StatusHandler;
 
-include_once "variables.php";
-include_once "Status.php";
-include_once "StatusHandler.php";
+include_once "../private/variables.php";
+include_once "../private/src/githubbot/Status.php";
+include_once "../private/src/githubbot/StatusHandler.php";
 
 $statusHandler = new StatusHandler(DATABASE_SOURCE_NAME,DATABASE_USERNAME,DATABASE_PASSWORD,CCX_VBOX_MANAGER);
 

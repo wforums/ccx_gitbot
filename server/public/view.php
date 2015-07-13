@@ -1,6 +1,6 @@
 <?php
 
-include_once "variables.php";
+include_once "../private/variables.php";
 
 if(isset($_GET["id"])){
     $pdo = new PDO(DATABASE_SOURCE_NAME,DATABASE_USERNAME,DATABASE_PASSWORD, [
@@ -26,7 +26,7 @@ if(isset($_GET["id"])){
                     echo "<h1>Progress for test request</h1>";
                     echo "<p>Testing repository ".htmlentities($testEntry["repository"])." in branch ".htmlentities($testEntry["branch"])." for commit ".htmlentities($testEntry["commit_hash"])."</p>";
                     echo "<table>";
-                    echo "<tr><th>Time</th><th>Satus</th><th>Message</th></tr>";
+                    echo "<tr><th>Time</th><th>Status</th><th>Message</th></tr>";
                     foreach($data as $row){
                         echo "<tr><td>".$row['time']."</td><td>".htmlentities($row["status"])."</td><td>".htmlentities($row["message"])."</td></tr>";
                     }
