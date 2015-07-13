@@ -311,6 +311,6 @@ class Processor:
         self.g.notifications().put()
 
 
-if __name__ == "main":
+if __name__ == "__main__":
     p = Processor()
     p.run()

@@ -51,5 +51,11 @@ class Configuration:
     vbox_password = "password"
     # VBox run tests script
     vbox_script = "/path/to/runTests/script"
-    # The folder that will be used to store the results in
-    result_folder = "/path/to/result/folder"
+    # The name of the VirtualBox machine that will be running the tests
+    vbox_name = "My VBox Machine name"
+
+    # Run certain commands through the linux VBoxManage instead of through
+    # the API. This can solve some stability issues
+    use_vbox_manage = False
+    # Log additional debug info?
+    debug = False
