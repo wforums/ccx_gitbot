@@ -1,0 +1,23 @@
+#!/bin/bash
+
+# This script contains the variables which we don't want to post on GitHub
+# Copy this to variables, and fill this in.
+
+# URL to report towards
+reportURL="http://your-own-domain-here.com/reporter.php"
+# Directory where the test suite is located
+testerDir = "/path/to/test/suite"
+# Shell script to launch the test suite
+tester="./ccextractortester"
+# The user agent we will use to send requests to the server (must correspond with the one in the ccx_admin folder)
+userAgent="My user agent string"
+# The folder that will be used to store the results in
+resultFolder="/path/to/temporary/folder"
+# The config XML that will be used as a base.
+config="/path/to/sampleConfig.xml"
+# Location of the samples
+sampleFolder="/path/to/test/files"
+# Testfile location
+testFile="$sampleFolder/testfile.xml"
+# The folder that contains the correct results
+resultFolder="/path/to/correct/results"
