@@ -74,7 +74,12 @@ class StatusHandler {
                         }
                     }
                 } else {
-                    // TODO: apply for local_queue as well
+                    $remaining = $this->pdo->query("SELECT t.`token` FROM local_queue l JOIN test t ON l.`test_id` = t.`id` ORDER BY l.`test_id` ASC LIMIT 1;");
+                    if ($remaining !== false && $remaining->rowCount() == 1) {
+                        $data = $remaining->fetch();
+                        // Call worker shell script
+                        exec($this->workerScript." ".escapeshellarg($data["token"])." &");
+                    }
                 }
                 $this->pdo->commit();
             } catch(PDOException $e){
