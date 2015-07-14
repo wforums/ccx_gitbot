@@ -36,3 +36,4 @@ server/private/variables.php
 server/variables
 worker/private/variables.php
 virtual_machine/variables
+worker/private/variables
