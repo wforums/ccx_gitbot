@@ -5,7 +5,9 @@ include_once "../private/variables.php";
 include_once "../private/src/githubbot/Status.php";
 include_once "../private/src/githubbot/StatusHandler.php";
 
-$statusHandler = new StatusHandler(DATABASE_SOURCE_NAME,DATABASE_USERNAME,DATABASE_PASSWORD,CCX_VBOX_MANAGER);
+$statusHandler = new StatusHandler(
+    DATABASE_SOURCE_NAME, DATABASE_USERNAME, DATABASE_PASSWORD,
+    CCX_VBOX_MANAGER, CCX_WORKER,  __DIR__."/reports");
 
 $command = "INVALID COMMAND";
 // This script handles only POST requests that have a type parameter and a token set, AND has the correct user agent
