@@ -32,9 +32,9 @@ if(isset($_GET["id"])){
                     }
                     echo "</table>";
                     if($testEntry["finished"] === "1"){
-                        echo '<p><a href="reports/'.$testEntry['id'].'/">Go to the results</a></p>';
-                        echo '<p><strong>WARNING! The result files have been auto-generated, and could possibly contain malware*, use caution.</strong></p>';
-                        echo '<p>(* Provided someone abuses the functionality of the bot)</p>';
+                        echo '<p><a class="button" href="reports/'.$testEntry['id'].'/">Go to the results</a></p>';
+                        echo '<p><strong>WARNING! The result files have been auto-generated and could possibly contain malware*, so please use caution.</strong></p>';
+                        echo '<p>(* That is, if someone is so unkind to abuse the functionality of the bot)</p>';
                     }
                     echo '</body></html>';
                 } else {

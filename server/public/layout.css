@@ -9,3 +9,16 @@ table, td, th {
 td, th {
     padding: 5px;
 }
+
+.button {
+    border-radius: 5px;
+    padding: 5px;
+    color: #000000;
+    background-color: #EEEEEE;
+    text-decoration: none;
+}
+
+.button:hover {
+    background-color: #000000;
+    color: #ffffff;
+}

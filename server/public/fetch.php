@@ -13,7 +13,7 @@ $command = "INVALID COMMAND";
 if ($_SERVER['HTTP_USER_AGENT'] === CCX_USER_AGENT_S) {
     if (isset($_POST["token"])) {
         $fetch = new FetchHandler(DATABASE_SOURCE_NAME,DATABASE_USERNAME,DATABASE_PASSWORD);
-        return $fetch->handle($_POST["token"]);
+        $command = $fetch->handle($_POST["token"]);
     }
 }
 echo $command;
