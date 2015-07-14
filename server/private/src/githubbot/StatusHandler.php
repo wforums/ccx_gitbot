@@ -26,9 +26,13 @@ class StatusHandler {
     /**
      * @var string
      */
-    private $reportFolder = "reports";
+    private $workerScript;
+    /**
+     * @var string
+     */
+    private $reportFolder;
 
-    function __construct($dsn,$username,$password, $pythonScript)
+    function __construct($dsn,$username,$password, $pythonScript, $workerScript, $uploadFolder)
     {
         $this->pdo = new PDO($dsn,$username,$password, [
             PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8",
@@ -36,6 +40,8 @@ class StatusHandler {
         ]);
         $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $this->pythonScript = $pythonScript;
+        $this->workerScript = $workerScript;
+        $this->reportFolder = $uploadFolder;
     }
 
     private function save_status($id,$status,$message){
@@ -56,17 +62,21 @@ class StatusHandler {
                 $p = $this->pdo->prepare("DELETE FROM test_queue WHERE test_id = :test_id LIMIT 1");
                 $p->bindParam(":test_id", $id, PDO::PARAM_INT);
                 $p->execute();
-                $this->pdo->commit();
-                // If there's still one or multiple items left in the queue, we'll need to give the python script a
-                // kick so it processes the next item.
-                $remaining = $this->pdo->query("SELECT COUNT(*) AS 'left' FROM test_queue");
-                if($remaining !== false){
-                    $data = $remaining->fetch();
-                    if($data['left'] > 0){
-                        // Call python script
-                        exec("python ".$this->pythonScript." &");
+                if($p->rowCount() === 1) {
+                    // If there's still one or multiple items left in the queue, we'll need to give the python script a
+                    // kick so it processes the next item.
+                    $remaining = $this->pdo->query("SELECT COUNT(*) AS 'left' FROM test_queue");
+                    if ($remaining !== false) {
+                        $data = $remaining->fetch();
+                        if ($data['left'] > 0) {
+                            // Call python script
+                            exec("python " . $this->pythonScript . " &");
+                        }
                     }
+                } else {
+                    // TODO: apply for local_queue as well
                 }
+                $this->pdo->commit();
             } catch(PDOException $e){
                 $this->pdo->rollBack();
             }

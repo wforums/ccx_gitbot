@@ -7,8 +7,12 @@
  */
 // User agent, must be equal to the user agent in ccx_vmscripts/variables(-sample)
 define("CCX_USER_AGENT","My user agent string");
+// User agent for reply back, must be equal to the user agent in the command server settings
+define("CCX_USER_AGENT_S","My user agent");
 // Path to the python vboxmanager script
 define("CCX_VBOX_MANAGER","/path/to/vbox/manager.py");
+// Path to the runNext script
+define("CCX_WORKER","/path/to/runNext");
 // MySQL database source name
 define("DATABASE_SOURCE_NAME","mysql:dbname=MYDATABASENAME;host=localhost");
 // MySQL username
