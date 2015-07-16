@@ -14,7 +14,7 @@ tester="./ccextractortester"
 # The user agent we will use to send requests to the server (must correspond with the one in the ccx_admin folder)
 userAgent="My user agent string"
 # The folder that will be used to store the results in
-resultFolder="/path/to/temporary/folder"
+reportFolder="/path/to/temporary/folder"
 # The config XML that will be used as a base.
 config="/path/to/sampleConfig.xml"
 # Location of the samples

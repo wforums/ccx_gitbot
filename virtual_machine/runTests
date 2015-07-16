@@ -11,7 +11,7 @@ if [ "$#" -ne 4 ]; then
 	echo "Illegal number of arguments provided!"
 	echo "Expected 4 arguments, got $#"
 	echo "Given arguments: $@"
-	exit
+	sudo shutdown -h now
 fi
 
 DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
@@ -56,9 +56,17 @@ postStatus "preparation" "git clone"
 # Clone into git directory
 executeCommand git clone $github "$repoDir"
 
-postStatus "preparation" "change branch"
 # Change to github folder
 executeCommand cd "$repoDir"
+postStatus "preparation" "change branch"
+# Update the local repository
+if [ $branch == "-_-" ]; then
+	# This is a PR, so fetch the pull request
+	executeCommand git fetch origin "pull/$commit/head:pr"
+	$branch="pr"
+else
+	executeCommand git fetch
+fi
 # Checkout the branch
 executeCommand git checkout $branch
 
