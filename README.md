@@ -26,13 +26,14 @@ All the necessary tables can be found in an installation SQL file, install.sql.
 
 #### Dependencies:
 
-This project makes use of a couple of pip packages (pymysql, githubpy and pyvbox), which can be installed by calling 
+This project makes use of a couple of pip packages (pymysql, githubpy, pyvbox and python-dateutil), which can be installed by calling 
 the pip command:
 
 ```
 sudo pip install pymysql
 sudo pip install githubpy
 sudo pip install pyvbox
+sudo pip install python-dateutil
 ```
 
 #### Scripts
