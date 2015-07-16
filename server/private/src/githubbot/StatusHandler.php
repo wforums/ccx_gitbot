@@ -31,8 +31,12 @@ class StatusHandler {
      * @var string
      */
     private $reportFolder;
+    /**
+     * @var string
+     */
+    private $base_URL;
 
-    function __construct($dsn,$username,$password, $pythonScript, $workerScript, $uploadFolder)
+    function __construct($dsn,$username,$password, $pythonScript, $workerScript, $uploadFolder,$base_url)
     {
         $this->pdo = new PDO($dsn,$username,$password, [
             PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8",
@@ -42,6 +46,7 @@ class StatusHandler {
         $this->pythonScript = $pythonScript;
         $this->workerScript = $workerScript;
         $this->reportFolder = $uploadFolder;
+        $this->baseURL = $base_url;
     }
 
     private function save_status($id,$status,$message){
@@ -74,6 +79,10 @@ class StatusHandler {
                         }
                     }
                 } else {
+                    // Remove on test_queue failed, so it must be local
+                    $p = $this->pdo->prepare("DELETE FROM local_queue WHERE test_id = :test_id LIMIT 1");
+                    $p->bindParam(":test_id", $id, PDO::PARAM_INT);
+                    $p->execute();
                     $remaining = $this->pdo->query("SELECT t.`token` FROM local_queue l JOIN test t ON l.`test_id` = t.`id` ORDER BY l.`test_id` ASC LIMIT 1;");
                     if ($remaining !== false && $remaining->rowCount() == 1) {
                         $data = $remaining->fetch();
@@ -162,6 +171,8 @@ class StatusHandler {
     private function queue_github_comment($id, $status)
     {
         $message = "";
+        $overview = "[status](".$this->base_URL."/view.php?id=".$id.")";
+        $reports = "[results](".$this->base_URL."/reports/".$id.")";
         switch($status){
             case Status::$FINALIZED:
                 // Fetch index.html, parse it and convert to a MD table
@@ -175,6 +186,7 @@ class StatusHandler {
                         // Convert table to markdown
                         $md = "";
                         $errors = false;
+                        $firstRow = true;
                         /** @var DOMNode $row */
                         foreach($table->childNodes as $row){
                             if($row->hasChildNodes()){
@@ -197,21 +209,25 @@ class StatusHandler {
 
                                 }
                                 $md .= "\r\n";
+                                if($firstRow){
+                                    $md .= str_replace("- -","---",preg_replace('/[^\|\s]/', '-', $md, -1));
+                                    $firstRow = false;
+                                }
                             }
                         }
                         if($errors){
-                            $md .= "It seems there were some errors. Please check the status and results page, and verify these.";
+                            $md .= "It seems there were some errors. Please check the ".$overview." and ".$reports." page, and verify these.";
                         }
-                        $message = "The test suite completed it's run. This is a summary (full info can be found on the status page:\r\n\r\n".$md;
+                        $message = "The test suite completed it's run. This is a summary (full info can be found on the ".$overview." page:\r\n\r\n".$md;
                     } else {
-                        $message = "The index file contained invalid contents. Please check the status page, and get in touch with us in case of an error!";
+                        $message = "The index file contained invalid contents. Please check the ".$overview." page, and get in touch with us in case of an error!";
                     }
                 } else {
-                    $message = "There is no index file available. Please check the status page, and get in touch with us in case of an error!";
+                    $message = "There is no index file available. Please check the ".$overview." page, and get in touch with us in case of an error!";
                 }
                 break;
             case Status::$ERROR:
-                $message = "An error occurred while running the tests. Please check the status page, and correct the error.";
+                $message = "An error occurred while running the tests. Please check the ".$overview." page, and correct the error.";
                 break;
             default:
                 break;

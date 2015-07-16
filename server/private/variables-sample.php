@@ -21,3 +21,5 @@ define("DATABASE_USERNAME","MYUSERNAME");
 define("DATABASE_PASSWORD","MYPASSWORD");
 // Admin password
 define("ADMIN_PASSWORD","The admin password");
+// Base URL of the application (without trailing slash)
+define("BASE_URL","http://my.domain.here/subfolder");
