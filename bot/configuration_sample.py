@@ -54,6 +54,11 @@ class Configuration:
     # The name of the VirtualBox machine that will be running the tests
     vbox_name = "My VBox Machine name"
 
+    # Location of the worker shell script
+    worker_script = "/path/to/runNext"
+    # Location of the progress url
+    progress_url = "http://my.website.here/view.php?id={0}"
+
     # Run certain commands through the linux VBoxManage instead of through
     # the API. This can solve some stability issues
     use_vbox_manage = False
