@@ -29,6 +29,9 @@ crashlytics-build.properties
 
 **/__pycache__/**
 
+# Any local generated log files
+*.log
+
 # Variables contains the real data (passwords, tokens), so for security
 reasons it cannot be added.
 bot/configuration.py
