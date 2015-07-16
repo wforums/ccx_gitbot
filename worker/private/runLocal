@@ -40,22 +40,37 @@ function haltAndCatchFire {
 }
 # Fail when the exit status is not equal to 0
 function executeCommand {
-	#echo "$@"
+	echo "executing command: $@"
 	"$@" >> "$reportFolder/log.html"
 	local status=$?
 	if [ $status -ne 0 ]; then
+		echo "Failed command ($status): $@"
 		haltAndCatchFire "" # No message needed as we post before anyway
 	fi
 }
 
-# Empty result folder
+# Clean report folder
+rm -rf $reportFolder/*
 
+echo "Tester dir: $testerDir" >> "log.txt"
 
 postStatus "preparation" "git fetch"
 # Change to github folder
 executeCommand cd "$github"
-# Clone into git directory
-executeCommand git fetch
+# Update the local repository
+if [ $branch == "-_-" ]; then
+	# This is a PR, so fetch the pull request
+	executeCommand git fetch origin "pull/$commit/head:pr"
+	$branch="pr"
+else
+	# Git fetch returns 1 on nothing to fetch... Not possible to pass to executeCommand :(
+	git fetch
+	status=$?
+	if [ $status -gt 1 ]; then
+		echo "Git fetch failed: $status"
+		haltAndCatchFire "" # No message needed as we post before anyway
+	fi
+fi
 
 postStatus "preparation" "change branch"
 # Checkout the branch
@@ -84,6 +99,8 @@ if [ -x "ccextractor" ]; then
 		curl -A "$userAgent" --form "token=$token" --form "type=upload" --form "html=@$f" -w "\n" $reportURL >> "$reportFolder/log.html"
 	done
 	postStatus "finalized" "finished"
+	# Clean report folder
+    rm -rf $reportFolder/*
 else
 	haltAndCatchFire "build"
 fi
