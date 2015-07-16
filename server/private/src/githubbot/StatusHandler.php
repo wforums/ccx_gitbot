@@ -46,7 +46,7 @@ class StatusHandler {
         $this->pythonScript = $pythonScript;
         $this->workerScript = $workerScript;
         $this->reportFolder = $uploadFolder;
-        $this->baseURL = $base_url;
+        $this->base_URL = $base_url;
     }
 
     private function save_status($id,$status,$message){
