@@ -30,10 +30,8 @@ CREATE TABLE `cmd_history` (
   `time` datetime NOT NULL,
   `type` varchar(100) NOT NULL,
   `requester` varchar(100) NOT NULL,
-  `test_id` int(11) DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `FK_cmd_history_test` (`test_id`),
-  CONSTRAINT `FK_cmd_history_test` FOREIGN KEY (`test_id`) REFERENCES `test` (`id`)
+  `link` text NOT NULL,
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 /*Table structure for table `test_progress` */

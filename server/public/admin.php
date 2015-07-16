@@ -77,9 +77,15 @@ if($_SESSION["login"]) {
                 if($stmt !== false){
                     $data = $stmt->fetchAll();
                     if(sizeof($data) > 0) {
-                        echo '<table><tr><th>Test ID</th><th>Time</th><th>Type</th><th>Requested by</th></tr>';
+                        echo '<table><tr><th>Test
+                        ID</th><th>Time</th><th>Type</th><th>Requested
+                        by</th><th>Link to comment</th></tr>';
                         foreach($data as $row){
-                            echo '<tr><td>'.$row['test_id'].'</td><td>'.$row['time'].'</td><td>'.htmlentities($row['type']).'</td><td>'.htmlentities($row['requester']).'</td></tr>';
+                            echo '<tr><td>'.$row['test_id'].'</td><td>'
+                            .$row['time'].'</td><td>'.htmlentities
+                            ($row['type']).'</td><td>'.htmlentities
+                            ($row['requester']).'</td><td>'.htmlentities
+                            ($row['link']).'</td></tr>';
                         }
                         echo '</table>';
                     } else {
