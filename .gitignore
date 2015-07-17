@@ -31,6 +31,12 @@ crashlytics-build.properties
 
 # Any local generated log files
 *.log
+server/private/logs/*
+
+# Composer
+composer.phar
+server/vendor/**
+server/composer.lock
 
 # Variables contains the real data (passwords, tokens), so for security
 reasons it cannot be added.
@@ -38,5 +44,5 @@ bot/configuration.py
 server/private/variables.php
 server/variables
 worker/private/variables.php
-virtual_machine/variables
 worker/private/variables
+virtual_machine/variables
