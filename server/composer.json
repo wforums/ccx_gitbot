@@ -1,0 +1,14 @@
+{
+  "name": "ccextractor/GitHubBot",
+  "description": "GitHub bot for CCExtractor",
+  "minimum-stability": "dev",
+  "license": "GNU GPL V2.0",
+  "authors": [
+    {
+      "name": "Willem Van Iseghem"
+    }
+  ],
+  "require": {
+    "katzgrau/klogger": "dev-master"
+  }
+}

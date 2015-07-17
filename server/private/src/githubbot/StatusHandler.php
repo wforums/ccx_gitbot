@@ -4,6 +4,7 @@ namespace org\ccextractor\githubbot;
 
 use DOMDocument;
 use DOMNode;
+use Katzgrau\KLogger\Logger;
 use PDO;
 use PDOException;
 
@@ -35,8 +36,22 @@ class StatusHandler {
      * @var string
      */
     private $base_URL;
+    /**
+     * @var Logger
+     */
+    private $logger;
 
-    function __construct($dsn,$username,$password, $pythonScript, $workerScript, $uploadFolder,$base_url)
+    /**
+     * @param $dsn
+     * @param $username
+     * @param $password
+     * @param $pythonScript
+     * @param $workerScript
+     * @param $uploadFolder
+     * @param $base_url
+     * @param Logger $logger
+     */
+    function __construct($dsn,$username,$password, $pythonScript, $workerScript, $uploadFolder,$base_url, Logger $logger)
     {
         $this->pdo = new PDO($dsn,$username,$password, [
             PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8",
@@ -47,6 +62,7 @@ class StatusHandler {
         $this->workerScript = $workerScript;
         $this->reportFolder = $uploadFolder;
         $this->base_URL = $base_url;
+        $this->logger = $logger;
     }
 
     private function save_status($id,$status,$message){
@@ -61,6 +77,7 @@ class StatusHandler {
     {
         if($this->pdo->beginTransaction()){
             try {
+                $this->logger->info("Marking id ".$id." as done");
                 $p = $this->pdo->prepare("UPDATE test SET finished = 1 WHERE id = :id");
                 $p->bindParam(":id",$id,PDO::PARAM_INT);
                 $p->execute();
@@ -68,14 +85,19 @@ class StatusHandler {
                 $p->bindParam(":test_id", $id, PDO::PARAM_INT);
                 $p->execute();
                 if($p->rowCount() === 1) {
+                    $this->logger->info("Deleted id from VM queue; checking for more");
                     // If there's still one or multiple items left in the queue, we'll need to give the python script a
                     // kick so it processes the next item.
                     $remaining = $this->pdo->query("SELECT COUNT(*) AS 'left' FROM test_queue");
                     if ($remaining !== false) {
                         $data = $remaining->fetch();
                         if ($data['left'] > 0) {
+                            $this->logger->info("Starting python script");
                             // Call python script
-                            exec("python " . $this->pythonScript . " &");
+                            $cmd = "python ".$this->pythonScript."> ".$this->logger->getLogFilePath()."/python.txt 2>&1 &";
+                            $this->logger->debug("Shell command: ".$cmd);
+                            exec($cmd);
+                            $this->logger->debug("Python script returned");
                         }
                     }
                 } else {
@@ -83,11 +105,16 @@ class StatusHandler {
                     $p = $this->pdo->prepare("DELETE FROM local_queue WHERE test_id = :test_id LIMIT 1");
                     $p->bindParam(":test_id", $id, PDO::PARAM_INT);
                     $p->execute();
+                    $this->logger->info("Deleted id from local queue; checking for more");
                     $remaining = $this->pdo->query("SELECT t.`token` FROM local_queue l JOIN test t ON l.`test_id` = t.`id` ORDER BY l.`test_id` ASC LIMIT 1;");
-                    if ($remaining !== false && $remaining->rowCount() == 1) {
+                    if ($remaining !== false && $remaining->rowCount() === 1) {
+                        $this->logger->info("Starting shell script");
                         $data = $remaining->fetch();
                         // Call worker shell script
-                        exec($this->workerScript." ".escapeshellarg($data["token"])." &");
+                        $cmd = $this->workerScript." ".escapeshellarg($data["token"])."> ".$this->logger->getLogFilePath()."/shell.txt 2>&1 &";
+                        $this->logger->debug("Shell command: ".$cmd);
+                        exec($cmd);
+                        $this->logger->debug("Shell script returned");
                     }
                 }
                 $this->pdo->commit();
