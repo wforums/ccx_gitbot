@@ -54,16 +54,19 @@ rm -rf $reportFolder/*
 
 echo "Tester dir: $testerDir" >> "log.txt"
 
-postStatus "preparation" "git fetch"
 # Change to github folder
 executeCommand cd "$github"
 # Update the local repository
+skipRevert=0
 if [ $branch == "-_-" ]; then
 	# This is a PR, so fetch the pull request
+	postStatus "preparation" "git fetch PR"
 	executeCommand git fetch origin "pull/$commit/head:pr"
-	$branch="pr"
+	branch="pr"
+	skipRevert=1
 else
 	# Git fetch returns 1 on nothing to fetch... Not possible to pass to executeCommand :(
+	postStatus "preparation" "git fetch commit"
 	git fetch
 	status=$?
 	if [ $status -gt 1 ]; then
@@ -76,9 +79,11 @@ postStatus "preparation" "change branch"
 # Checkout the branch
 executeCommand git checkout $branch
 
-postStatus "preparation" "reverting to commit"
-# Reset head to the commit
-executeCommand git reset --hard $commit
+if [ $skipRevert -eq 0]; then
+	postStatus "preparation" "reverting to commit"
+	# Reset head to the commit
+	executeCommand git reset --hard $commit
+fi
 
 postStatus "preparation" "building CCExtractor"
 # Go to linux build folder
