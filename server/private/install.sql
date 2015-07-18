@@ -92,3 +92,13 @@ CREATE TABLE `github_queue` (
   KEY `FK_github_queue_test` (`test_id`),
   CONSTRAINT `FK_github_queue_test` FOREIGN KEY (`test_id`) REFERENCES `test` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+/*Table structure for table `trusted_users` */
+
+DROP TABLE IF EXISTS `trusted_users`;
+
+CREATE TABLE `trusted_users` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `user` VARCHAR(100) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
