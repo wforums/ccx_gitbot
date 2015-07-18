@@ -40,6 +40,10 @@ class StatusHandler {
      * @var Logger
      */
     private $logger;
+    /**
+     * @var string
+     */
+    private $author;
 
     /**
      * @param $dsn
@@ -51,7 +55,7 @@ class StatusHandler {
      * @param $base_url
      * @param Logger $logger
      */
-    function __construct($dsn,$username,$password, $pythonScript, $workerScript, $uploadFolder,$base_url, Logger $logger)
+    function __construct($dsn,$username,$password, $pythonScript, $workerScript, $uploadFolder,$base_url, Logger $logger, $author)
     {
         $this->pdo = new PDO($dsn,$username,$password, [
             PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8",
@@ -63,6 +67,7 @@ class StatusHandler {
         $this->reportFolder = $uploadFolder;
         $this->base_URL = $base_url;
         $this->logger = $logger;
+        $this->author = $author;
     }
 
     private function save_status($id,$status,$message){
@@ -94,7 +99,7 @@ class StatusHandler {
                         if ($data['left'] > 0) {
                             $this->logger->info("Starting python script");
                             // Call python script
-                            $cmd = "python ".$this->pythonScript."> ".$this->logger->getLogFilePath()."/python.txt 2>&1 &";
+                            $cmd = "python ".$this->pythonScript."> ".dirname($this->logger->getLogFilePath())."/python.txt 2>&1 &";
                             $this->logger->debug("Shell command: ".$cmd);
                             exec($cmd);
                             $this->logger->debug("Python script returned");
@@ -111,7 +116,7 @@ class StatusHandler {
                         $this->logger->info("Starting shell script");
                         $data = $remaining->fetch();
                         // Call worker shell script
-                        $cmd = $this->workerScript." ".escapeshellarg($data["token"])."> ".$this->logger->getLogFilePath()."/shell.txt 2>&1 &";
+                        $cmd = $this->workerScript." ".escapeshellarg($data["token"])."> ".dirname($this->logger->getLogFilePath())."/shell.txt 2>&1 &";
                         $this->logger->debug("Shell command: ".$cmd);
                         exec($cmd);
                         $this->logger->debug("Shell script returned");
@@ -198,7 +203,7 @@ class StatusHandler {
     private function queue_github_comment($id, $status)
     {
         $message = "";
-        $overview = "[status](".$this->base_URL."/view.php?id=".$id.")";
+        $progress = "[status](".$this->base_URL."/view.php?id=".$id.")";
         $reports = "[results](".$this->base_URL."/reports/".$id.")";
         switch($status){
             case Status::$FINALIZED:
@@ -243,18 +248,18 @@ class StatusHandler {
                             }
                         }
                         if($errors){
-                            $md .= "It seems there were some errors. Please check the ".$overview." and ".$reports." page, and verify these.";
+                            $md .= "It seems that not all tests were passed completely. This is an indication that the output of some files is not as expected (but might be according to you). Please check the ".$reports." page, and verify those files. If you have a question about this report, please contact".$this->author.".";
                         }
-                        $message = "The test suite completed it's run. This is a summary (full info can be found on the ".$overview." page:\r\n\r\n".$md;
+                        $message = "The test suite finished running the test files. Below is a summary of the test results:\r\n\r\n".$md;
                     } else {
-                        $message = "The index file contained invalid contents. Please check the ".$overview." page, and get in touch with us in case of an error!";
+                        $message = "The index file contained invalid contents. Please check the ".$progress." page, and get in touch with ".$this->author." in case of an error!";
                     }
                 } else {
-                    $message = "There is no index file available. Please check the ".$overview." page, and get in touch with us in case of an error!";
+                    $message = "There is no index file available. Please check the ".$progress." page, and get in touch with ".$this->author." in case of an error!";
                 }
                 break;
             case Status::$ERROR:
-                $message = "An error occurred while running the tests. Please check the ".$overview." page, and correct the error.";
+                $message = "An error occurred while running the tests. Please check the ".$progress." page, and correct the error. If you have a question, please contact ".$this->author.".";
                 break;
             default:
                 break;

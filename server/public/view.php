@@ -24,7 +24,20 @@ if(isset($_GET["id"])){
                 if(sizeof($data) >= 1){
                     echo '<html><head><link href="layout.css" rel="stylesheet" /></head><body>';
                     echo "<h1>Progress for test request</h1>";
-                    echo "<p>Testing repository ".htmlentities($testEntry["repository"])." in branch ".htmlentities($testEntry["branch"])." for commit ".htmlentities($testEntry["commit_hash"])."</p>";
+                    $url = str_replace(".git","",str_replace('git://','https://',$testEntry["repository"]));
+                    switch($testEntry["type"]){
+                        case "Commit":
+                            $url .= "/commit/".$testEntry["commit_hash"];
+                            echo "<p>Testing repository ".htmlentities($testEntry["repository"])." in branch ".htmlentities($testEntry["branch"]).' for commit <a href="'.htmlentities($url).'">'.htmlentities($testEntry["commit_hash"])."</a></p>";
+                            break;
+                        case "PullRequest":
+                            $url .= "/pull/".$testEntry["commit_hash"];
+                            echo "<p>Testing repository ".htmlentities($testEntry["repository"]).' for <a href="'.htmlentities($url).'">pull request '.htmlentities($testEntry["commit_hash"])."</a></p>";
+                            break;
+                        default:
+                            echo "Unknown test type!";
+                            break;
+                    }
                     echo "<table>";
                     echo "<tr><th>Time</th><th>Status</th><th>Message</th></tr>";
                     foreach($data as $row){

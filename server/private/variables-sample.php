@@ -23,3 +23,5 @@ define("DATABASE_PASSWORD","MYPASSWORD");
 define("ADMIN_PASSWORD","The admin password");
 // Base URL of the application (without trailing slash)
 define("BASE_URL","http://my.domain.here/subfolder");
+// The author of the application (don't forget the @ sign if you want to get a notification when someone uses the tool).
+define("AUTHOR","@github_name");
