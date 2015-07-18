@@ -22,6 +22,7 @@
     A full license can be found under the LICENSE file.
 """
 
+
 class Configuration:
     """
     Holds all the configuration variables for the GitHub bot

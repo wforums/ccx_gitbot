@@ -1,11 +1,12 @@
-import logging
-import logging.handlers
+import os
 import random
 import string
-from subprocess import call
+import subprocess
 from github import GitHub, ApiNotFoundError
+import multiprocessing
 import pymysql
 from configuration import Configuration
+from loggers import LogConfiguration
 import run_vm
 import dateutil.parser
 
@@ -38,14 +39,19 @@ class BotMessages:
     Holds a selection of messages that the bot will use to reply.
     """
 
-    acknowledged = 'Command acknowledged. You can find the progress and ' \
-                   'final result here: {0}. Please not that it could take a ' \
-                   'while before any results appear.'
-    invalidCommand = 'No valid command detected. Please try again.'
-    branchMissing = 'No branch was specified. Please use "runtests {branch ' \
+    acknowledged = 'Thank you for the request. It has been added to the ' \
+                   'queue (id: {0}). To see the progress you can go to the ' \
+                   '[status]({1}) page. Please note that depending on the ' \
+                   'current queue, it could take a while before any results ' \
+                   'will be visible. In each case I will report back here ' \
+                   'once the tests are done.'
+    invalidCommand = 'Your message does not contain a valid command. Please ' \
+                     'try again.'
+    branchMissing = 'You forgot to specify a branch, so I can\'t help you ' \
+                    'yet... Please try again by using "runtests {branch ' \
                     'name}".'
-    branchInvalid = 'Given branch {0} is invalid. Please select a valid ' \
-                    'branch  name.'
+    branchInvalid = 'The branch you gave me ({0}) is invalid. Please try ' \
+                    'again and give me a valid branch name.'
 
 
 class Processor:
@@ -53,6 +59,8 @@ class Processor:
     This class holds all the logic to process GitHub notifications and
     comment on previous ones (to report a status, ...).
     """
+
+    _conn = None
 
     def __init__(self, debug=False):
         """
@@ -65,29 +73,9 @@ class Processor:
         # Init GitHub with the configured access token
         self.g = GitHub(access_token=Configuration.token)
 
-        self.logger = logging.getLogger("Processor")
-        self.logger.setLevel(logging.DEBUG)
-
-        # create console handler
-        console = logging.StreamHandler()
-        console.setFormatter(logging.Formatter('[%(levelname)s] %(message)s'))
-        if debug:
-            console.setLevel(logging.DEBUG)
-        else:
-            console.setLevel(logging.INFO)
-        # create a file handler
-        file_log = logging.handlers.RotatingFileHandler(
-            'processor.log',
-            maxBytes=1024*1024,  # 1 Mb
-            backupCount=20)
-        file_log.setLevel(logging.DEBUG)
-        # create a logging format
-        formatter = logging.Formatter(
-            '[%(name)s][%(levelname)s][%(asctime)s] %(message)s')
-        file_log.setFormatter(formatter)
-        # add the handlers to the logger
-        self.logger.addHandler(file_log)
-        self.logger.addHandler(console)
+        self.debug = debug
+        loggers = LogConfiguration(self.debug)
+        self.logger = loggers.create_logger("Processor")
 
     @staticmethod
     def generate_random_string(
@@ -111,6 +99,15 @@ class Processor:
         """
 
         self.logger.info("Start of bot")
+        # Create connection to the DB
+        self._conn = pymysql.connect(
+            host=Configuration.database_host,
+            user=Configuration.database_user,
+            passwd=Configuration.database_password,
+            db=Configuration.database_name,
+            charset='latin1',
+            cursorclass=pymysql.cursors.DictCursor)
+        # Get valid forks
         open_forks = self.get_forks()
 
         for notification in self.g.notifications.get():
@@ -168,55 +165,49 @@ class Processor:
         # Marks notifications as read
         self.g.notifications().put()
         # Process pending GitHub queue for comments
-        conn = pymysql.connect(
-            host=Configuration.database_host,
-            user=Configuration.database_user,
-            passwd=Configuration.database_password,
-            db=Configuration.database_name,
-            charset='latin1',
-            cursorclass=pymysql.cursors.DictCursor)
-        try:
-            with conn.cursor() as c:
-                if c.execute(
-                        "SELECT g.id, g.message, t.* FROM github_queue g "
-                        "JOIN test t ON g.test_id = t.id "
-                        "ORDER BY g.id ASC") > 0:
-                    self.logger.info("Processing GitHub messages queue")
+        with self._conn.cursor() as c:
+            if c.execute(
+                    "SELECT g.id, g.message, t.* FROM github_queue g "
+                    "JOIN test t ON g.test_id = t.id "
+                    "ORDER BY g.id ASC") > 0:
+                self.logger.info("Processing GitHub messages queue")
+                row = c.fetchone()
+                to_delete = []
+                while row is not None:
+                    # Process row
+                    self.logger.debug("Processing row")
+                    owner = row["repository"].replace(
+                        "git://github.com/","").replace(
+                        "/"+Configuration.repo_name+".git","")
+                    self.logger.debug("Owner of the repository to "
+                                      "reply back to: {0}".format(owner))
+                    if row["type"] == "Commit":
+                        self.logger.info("Reporting back on Commit")
+                        self.g.repos(owner)(
+                            Configuration.repo_name).commits(
+                            row["commit_hash"]).comments.post(
+                            body=row["message"])
+                    elif row["type"] == "PullRequest" \
+                            or row["type"] == "Issue":
+                        self.logger.info("Reporting back to PR or issue")
+                        self.g.repos(owner)(
+                            Configuration.repo_name).issues(
+                            row["commit_hash"]).comments.post(
+                            body=row["message"])
+                    else:
+                        self.logger.warn("Unknown test type!")
+                    to_delete.append(str(row["id"]))
                     row = c.fetchone()
-                    to_delete = []
-                    while row is not None:
-                        # Process row
-                        self.logger.debug("Processing row")
-                        owner = row["repository"].replace(
-                            "git://github.com/","").replace(
-                            "/"+Configuration.repo_name+".git","")
-                        self.logger.debug("Owner of the repository to "
-                                          "reply back to: {0}".format(owner))
-                        if row["type"] == "Commit":
-                            self.logger.info("Reporting back on Commit")
-                            self.g.repos(owner)(
-                                Configuration.repo_name).commits(
-                                row["commit_hash"]).comments.post(
-                                body=row["message"])
-                        elif row["type"] == "PullRequest" \
-                                or row["type"] == "Issue":
-                            self.logger.info("Reporting back to PR or issue")
-                            self.g.repos(owner)(
-                                Configuration.repo_name).issues(
-                                row["commit_hash"]).comments.post(
-                                body=row["message"])
-                        else:
-                            self.logger.warn("Unknown test type!")
-                        to_delete.append(str(row["id"]))
-                        row = c.fetchone()
-                    # Delete processed rows
-                    c.execute("DELETE FROM github_queue WHERE id IN ("
-                              ""+(",".join(to_delete))+")")
-                    conn.commit()
-                else:
-                    self.logger.info("No more items to process")
-        finally:
-            conn.close()
+                # Delete processed rows
+                c.execute("DELETE FROM github_queue WHERE id IN ("
+                          ""+(",".join(to_delete))+")")
+                self._conn.commit()
+            else:
+                self.logger.info("No more items to process")
+
+        # Closing connection to DB
+        self._conn.close()
+        self._conn = None
         self.logger.info("End of bot")
 
     def get_forks(self):
@@ -283,10 +274,11 @@ class Processor:
                 "Processing comment {0}, coming from {1} (content: "
                 "{2})".format(idx, user, message))
             mentioned = True
+            if not self.allowed_local(user, fork):
+                break
             if self.process_comment(message, initial_type, initial_id,
                                     repository_owner, fork, user,
                                     comment.html_url, comment.created_at):
-                mentioned = True
                 break
 
         if not mentioned:
@@ -358,15 +350,20 @@ class Processor:
 
                 self.logger.info(
                     "Adding {0}, branch {1} and commit {2} to the test "
-                    "queue".format(repository_owner + Configuration.repo_name,
-                                   branch, original_id))
+                    "queue".format(
+                        repository_owner + '/' + Configuration.repo_name,
+                        branch,
+                        original_id
+                    ))
                 queue_id = self.store_in_queue(fork, branch, original_id,
                                                original_type)
                 self.g.repos(repository_owner)(
                     Configuration.repo_name).commits(
                     original_id).comments.post(
                     body=BotMessages.acknowledged.format(
-                        Configuration.progress_url.format(queue_id)))
+                        queue_id,
+                        Configuration.progress_url.format(queue_id)
+                    ))
             elif original_type == "PullRequest":
                 self.logger.info(
                     "Storing data in queue for  id {0}".format(original_id))
@@ -375,10 +372,12 @@ class Processor:
                 queue_id = self.store_in_queue(fork, "-_-", original_id,
                                                original_type)
                 self.g.repos(repository_owner)(
-                    Configuration.repo_name).commits(
+                    Configuration.repo_name).issues(
                     original_id).comments.post(
                     body=BotMessages.acknowledged.format(
-                        Configuration.progress_url.format(queue_id)))
+                        queue_id,
+                        Configuration.progress_url.format(queue_id)
+                    ))
             else:
                 self.logger.info("run tests command not supported for issue "
                                  "(# {0})".format(original_id))
@@ -436,57 +435,58 @@ class Processor:
         :return:
         """
         self.logger.info("Storing request in queue")
-        conn = pymysql.connect(
-            host=Configuration.database_host,
-            user=Configuration.database_user,
-            passwd=Configuration.database_password,
-            db=Configuration.database_name,
-            charset='latin1',
-            cursorclass=pymysql.cursors.DictCursor)
-        try:
-            with conn.cursor() as c:
-                token = self.generate_random_string(32)
-                self.logger.debug("Generated token: {0}".format(token))
+        with self._conn.cursor() as c:
+            token = self.generate_random_string(32)
+            self.logger.debug("Generated token: {0}".format(token))
+            c.execute(
+                "INSERT INTO `test`(`id`,`token`,`repository`,`branch`,"
+                "`commit_hash`, `type`) VALUES (NULL,%s,%s,%s,%s,%s);",
+                (token, fork, branch, original_id, original_type))
+            self._conn.commit()
+            # Trailing comma is necessary or python will raise a
+            # ValueError.
+            insert_id = c.lastrowid
+            self.logger.debug("Inserted id: {0}".format(insert_id))
+            if c.execute("SELECT id FROM local_repos WHERE github = %s "
+                         "LIMIT 1;", (fork,)) == 1:
+                # Local
+                self.logger.info("Local request")
                 c.execute(
-                    "INSERT INTO `test`(`id`,`token`,`repository`,`branch`,"
-                    "`commit_hash`, `type`) VALUES (NULL,%s,%s,%s,%s,%s);",
-                    (token, fork, branch, original_id, original_type))
-                conn.commit()
-                # Trailing comma is necessary or python will raise a
-                # ValueError.
-                insert_id = c.lastrowid
-                self.logger.debug("Inserted id: {0}".format(insert_id))
-                if c.execute("SELECT id FROM local_repos WHERE github = %s "
-                             "LIMIT 1;", (fork,)) == 1:
-                    # Local
-                    self.logger.info("Local request")
-                    c.execute(
-                        "INSERT INTO `local_queue` (`test_id`) VALUES (%s);",
-                        (insert_id,))
-                else:
-                    # VM
-                    self.logger.info("VM request")
-                    c.execute(
-                        "INSERT INTO `test_queue` (`test_id`) VALUES (%s);",
-                        (insert_id,))
-                conn.commit()
-                # Check which queue's just have a single item, and run the
-                # appropriate script for those
-                if c.execute("SELECT * FROM local_queue") == 1:
-                    # Call shell script to activate worker
-                    self.logger.info("Calling local script")
-                    # TODO: redirect output
-                    code = call([Configuration.worker_script, token])
-                    self.logger.info(
-                        "Local script completed with {0}".format(code))
-                if c.execute("SELECT * FROM test_queue") == 1:
-                    # Run main method of the Python VM script
-                    self.logger.info("Call VM script")
-                    run_vm.main()
-
-                return insert_id
-        finally:
-            conn.close()
+                    "INSERT INTO `local_queue` (`test_id`) VALUES (%s);",
+                    (insert_id,))
+            else:
+                # VM
+                self.logger.info("VM request")
+                c.execute(
+                    "INSERT INTO `test_queue` (`test_id`) VALUES (%s);",
+                    (insert_id,))
+            self._conn.commit()
+            # Check which queue's just have a single item, and run the
+            # appropriate script for those
+            if c.execute("SELECT * FROM local_queue") == 1:
+                # Call shell script to activate worker
+                self.logger.info("Calling local script")
+                fh = open("out.txt", "w")
+                code = subprocess.call(
+                    [Configuration.worker_script, token],
+                    stdout=fh,
+                    stderr=subprocess.STDOUT
+                )
+                self.logger.info(
+                    "Local script completed with {0}".format(code))
+                fh.close()
+                fh = open("out.txt", "r")
+                self.logger.debug("Local script returned:")
+                self.logger.debug(fh.read())
+                fh.close()
+            if c.execute("SELECT * FROM test_queue") == 1:
+                # Run main method of the Python VM script
+                self.logger.info("Call VM script")
+                p = multiprocessing.Process(target=run_vm.main,
+                                            args=(self.debug,))
+                p.start()
+                self.logger.info("VM script launched")
+            return insert_id
 
     def store_command(self, timestamp, command_type, user, comment_link):
         """
@@ -501,26 +501,50 @@ class Processor:
         :return:
         """
         self.logger.info("Storing command for history")
-        conn = pymysql.connect(
-            host=Configuration.database_host,
-            user=Configuration.database_user,
-            passwd=Configuration.database_password,
-            db=Configuration.database_name,
-            charset='latin1',
-            cursorclass=pymysql.cursors.DictCursor)
         # Convert given timestamp to a python object
         date = dateutil.parser.parse(timestamp)
         # Format to MySQL datetime
         datetime = date.strftime('%Y-%m-%d %H:%M:%S')
-        try:
-            with conn.cursor() as c:
-                self.logger.debug(datetime)
-                c.execute('INSERT INTO cmd_history VALUES (NULL, %s, %s, %s, '
-                          '%s)',(datetime, command_type, user, comment_link))
-                conn.commit()
-                self.logger.debug("Stored command")
-        finally:
-            conn.close()
+        with self._conn.cursor() as c:
+            self.logger.debug(datetime)
+            c.execute('INSERT INTO cmd_history VALUES (NULL, %s, %s, %s, '
+                      '%s)',(datetime, command_type, user, comment_link))
+            self._conn.commit()
+            self.logger.debug("Stored command")
+
+    def allowed_local(self, user, fork):
+        # Owner of fork is always allowed
+        if "git://github.com/"+user+"/ccextractor.git" == fork:
+            self.logger.debug("{0} seems to be the owner of {1}".format(
+                user, fork))
+            return True
+
+        # If the fork can be ran local, only trusted users should be
+        # allowed for security reasons
+        if self.is_local(fork) and not self.is_user_trusted(user):
+            return False
+
+        return True
+
+    def is_local(self, fork):
+        with self._conn.cursor() as c:
+            if c.execute(
+                    "SELECT id FROM local_repos WHERE github = %s LIMIT 1",
+                    (fork,)) == 1:
+                self.logger.debug("Repository {0} is marked to be ran "
+                                  "locally in the DB".format(fork))
+                return True
+        return False
+
+    def is_user_trusted(self, user):
+        with self._conn.cursor() as c:
+            if c.execute(
+                    "SELECT id FROM trusted_users WHERE user = %s LIMIT 1",
+                    (user,)) == 1:
+                self.logger.debug("User {0} is marked as trusted in the "
+                                  "DB".format(user))
+                return True
+        return False
 
 
 if __name__ == "__main__":
