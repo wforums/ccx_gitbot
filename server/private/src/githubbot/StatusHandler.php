@@ -248,7 +248,7 @@ class StatusHandler {
                             }
                         }
                         if($errors){
-                            $md .= "It seems that not all tests were passed completely. This is an indication that the output of some files is not as expected (but might be according to you). Please check the ".$reports." page, and verify those files. If you have a question about this report, please contact".$this->author.".";
+                            $md .= "It seems that not all tests were passed completely. This is an indication that the output of some files is not as expected (but might be according to you). Please check the ".$reports." page, and verify those files. If you have a question about this report, please contact ".$this->author.".";
                         }
                         $message = "The test suite finished running the test files. Below is a summary of the test results:\r\n\r\n".$md;
                     } else {
