@@ -54,6 +54,10 @@ class Configuration:
     vbox_script = "/path/to/runTests/script"
     # The name of the VirtualBox machine that will be running the tests
     vbox_name = "My VBox Machine name"
+    # The maximum allowed runtime for a single test-run. If the duration of
+    #  a single queue item elapses beyond this point, it will be aborted.
+    # This is in hours
+    max_runtime = 15
 
     # Location of the worker shell script
     worker_script = "/path/to/runNext"

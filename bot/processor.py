@@ -52,6 +52,9 @@ class BotMessages:
                     'name}".'
     branchInvalid = 'The branch you gave me ({0}) is invalid. Please try ' \
                     'again and give me a valid branch name.'
+    aborted = 'I\'m sorry, but I had to abort the item, because the maximum ' \
+              'time elapsed. Please improve the efficiency of your code, or ' \
+              'get in touch if you think this is an error.'
 
 
 class Processor:
@@ -107,63 +110,79 @@ class Processor:
             db=Configuration.database_name,
             charset='latin1',
             cursorclass=pymysql.cursors.DictCursor)
-        # Get valid forks
-        open_forks = self.get_forks()
 
-        for notification in self.g.notifications.get():
-            repo_name = notification.repository.full_name
-            self.logger.info("Got a notification in {0}".format(repo_name))
-            if repo_name in open_forks:
-                url = notification.subject.url
-                parts = url.split('/')
-                not_id = parts[-1]
-                not_type = notification.subject.type
-                repo_owner = notification.repository.owner.login
-                self.logger.info("Valid notification: {0} #{1}".format(
-                    not_type, not_id))
-                self.logger.debug("Repository owned by: {0}".format(
-                    repo_owner))
-                if not_type == "Issue":
-                    self.logger.debug("Fetching issue")
-                    issue = self.g.repos(repo_owner)(
-                        Configuration.repo_name).issues(not_id).get()
-                    comments = self.g.repos(repo_owner)(
-                        Configuration.repo_name).issues(not_id).comments.get()
-                    self.run_through_comments(
-                        issue, comments, not_type, not_id, repo_owner,
-                        open_forks[repo_name])
-                elif not_type == "PullRequest":
-                    self.logger.debug("Fetching PR")
-                    request = self.g.repos(repo_owner)(
-                        Configuration.repo_name).pulls(not_id).get()
-                    # For some reason, the comments for the PR are issues...
-                    comments = self.g.repos(repo_owner)(
-                        Configuration.repo_name).issues(not_id).comments.get()
-                    self.run_through_comments(
-                        request, comments, not_type, not_id, repo_owner,
-                        open_forks[repo_name])
-                elif not_type == "Commit":
-                    self.logger.debug("Fetching Commit")
-                    commit = self.g.repos(repo_owner)(
-                        Configuration.repo_name).commits(not_id).get()
-                    comments = self.g.repos(repo_owner)(
-                        Configuration.repo_name).commits(
-                        not_id).comments().get()
-                    self.run_through_comments(
-                        commit, comments, not_type, not_id, repo_owner,
-                        open_forks[repo_name])
+        self.logger.debug("Fetching notifications")
+        notifications = self.g.notifications.get()
+        if len(notifications) > 0:
+            self.logger.debug("We got {0} new notifications".format(
+                len(notifications)))
+            # Get valid forks
+            open_forks = self.get_forks()
+            # Run through notifications
+            for notification in notifications:
+                repo_name = notification.repository.full_name
+                self.logger.info("Got a notification in {0}".format(repo_name))
+                if repo_name in open_forks:
+                    url = notification.subject.url
+                    parts = url.split('/')
+                    not_id = parts[-1]
+                    not_type = notification.subject.type
+                    repo_owner = notification.repository.owner.login
+                    self.logger.info("Valid notification: {0} #{1}".format(
+                        not_type, not_id))
+                    self.logger.debug("Repository owned by: {0}".format(
+                        repo_owner))
+                    if not_type == "Issue":
+                        self.logger.debug("Fetching issue")
+                        issue = self.g.repos(repo_owner)(
+                            Configuration.repo_name).issues(not_id).get()
+                        comments = self.g.repos(repo_owner)(
+                            Configuration.repo_name).issues(not_id).comments.get()
+                        self.run_through_comments(
+                            issue, comments, not_type, not_id, repo_owner,
+                            open_forks[repo_name])
+                    elif not_type == "PullRequest":
+                        self.logger.debug("Fetching PR")
+                        request = self.g.repos(repo_owner)(
+                            Configuration.repo_name).pulls(not_id).get()
+                        # For some reason, the comments for the PR are issues...
+                        comments = self.g.repos(repo_owner)(
+                            Configuration.repo_name).issues(not_id).comments.get()
+                        self.run_through_comments(
+                            request, comments, not_type, not_id, repo_owner,
+                            open_forks[repo_name])
+                    elif not_type == "Commit":
+                        self.logger.debug("Fetching Commit")
+                        commit = self.g.repos(repo_owner)(
+                            Configuration.repo_name).commits(not_id).get()
+                        comments = self.g.repos(repo_owner)(
+                            Configuration.repo_name).commits(
+                            not_id).comments().get()
+                        self.run_through_comments(
+                            commit, comments, not_type, not_id, repo_owner,
+                            open_forks[repo_name])
+                    else:
+                        self.logger.warn("Unknown type!")
                 else:
-                    self.logger.warn("Unknown type!")
-            else:
-                self.logger.warn(
-                    "skipped notification because {0} is not the correct "
-                    "repository (expected a fork of {1})".format(
-                        notification.repository.full_name,
-                        Configuration.repo_owner + '/' +
-                        Configuration.repo_name))
+                    self.logger.warn(
+                        "skipped notification because {0} is not the correct "
+                        "repository (expected a fork of {1})".format(
+                            notification.repository.full_name,
+                            Configuration.repo_owner + '/' +
+                            Configuration.repo_name))
+                # Unsubscribe from notification
+                self.logger.debug(
+                    "Unsubscribing from notification {0}".format(
+                        notification.id))
+                self.g.notifications().threads(
+                    notification.id).subscription().delete()
 
-        # Marks notifications as read
-        self.g.notifications().put()
+            # Marks notifications as read
+            self.logger.debug("Marking notifications as read")
+            self.g.notifications().put()
+        else:
+            self.logger.info("No notifications for now")
+
         # Process pending GitHub queue for comments
         with self._conn.cursor() as c:
             if c.execute(
@@ -203,7 +222,7 @@ class Processor:
                           ""+(",".join(to_delete))+")")
                 self._conn.commit()
             else:
-                self.logger.info("No more items to process")
+                self.logger.info("No GitHub items to process")
 
         # Closing connection to DB
         self._conn.close()
@@ -479,7 +498,7 @@ class Processor:
                 self.logger.debug("Local script returned:")
                 self.logger.debug(fh.read())
                 fh.close()
-            if c.execute("SELECT * FROM test_queue") == 1:
+            if c.execute("SELECT * FROM test_queue") > 1:
                 # Run main method of the Python VM script
                 self.logger.info("Call VM script")
                 p = multiprocessing.Process(target=run_vm.main,
