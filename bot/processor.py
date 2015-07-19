@@ -1,10 +1,10 @@
-import os
 import random
 import string
 import subprocess
 from github import GitHub, ApiNotFoundError
 import multiprocessing
 import pymysql
+from bot_messages import BotMessages
 from configuration import Configuration
 from loggers import LogConfiguration
 import run_vm
@@ -32,29 +32,6 @@ import dateutil.parser
 
     A full license can be found under the LICENSE file.
 '''
-
-
-class BotMessages:
-    """
-    Holds a selection of messages that the bot will use to reply.
-    """
-
-    acknowledged = 'Thank you for the request. It has been added to the ' \
-                   'queue (id: {0}). To see the progress you can go to the ' \
-                   '[status]({1}) page. Please note that depending on the ' \
-                   'current queue, it could take a while before any results ' \
-                   'will be visible. In each case I will report back here ' \
-                   'once the tests are done.'
-    invalidCommand = 'Your message does not contain a valid command. Please ' \
-                     'try again.'
-    branchMissing = 'You forgot to specify a branch, so I can\'t help you ' \
-                    'yet... Please try again by using "runtests {branch ' \
-                    'name}".'
-    branchInvalid = 'The branch you gave me ({0}) is invalid. Please try ' \
-                    'again and give me a valid branch name.'
-    aborted = 'I\'m sorry, but I had to abort the item, because the maximum ' \
-              'time elapsed. Please improve the efficiency of your code, or ' \
-              'get in touch if you think this is an error.'
 
 
 class Processor:
@@ -498,7 +475,7 @@ class Processor:
                 self.logger.debug("Local script returned:")
                 self.logger.debug(fh.read())
                 fh.close()
-            if c.execute("SELECT * FROM test_queue") > 1:
+            if c.execute("SELECT * FROM test_queue") >= 1:
                 # Run main method of the Python VM script
                 self.logger.info("Call VM script")
                 p = multiprocessing.Process(target=run_vm.main,

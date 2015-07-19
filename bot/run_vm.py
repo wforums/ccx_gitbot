@@ -8,7 +8,7 @@ from virtualbox.library_base import VBoxError
 from configuration import Configuration
 from subprocess import call
 from loggers import LogConfiguration
-from processor import BotMessages
+from bot_messages import BotMessages
 
 '''
     A script to run the test suite inside a VirtualBox VM. Be warned,
@@ -201,7 +201,14 @@ def main(debug=False):
             logger.debug("Will attempt a power down")
             p = session2.console.power_down()
             p.wait_for_completion(-1)
-            logger.debug("Should be powered down")
+            state = session2.machine.state
+            logger.debug(
+                "Should be powered down; current status: {0}".format(state))
+            while state >= library.MachineState.first_online and state <= \
+                    library.MachineState.last_online:
+                time.sleep(1)
+                state = session2.machine.state
+            logger.debug("Out of sleep loop, status: {0}".format(state))
     else:
         logger.debug("Machine in powered off state, as expected")
 
