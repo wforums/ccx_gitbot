@@ -1,4 +1,6 @@
 import time
+import datetime
+import dateutil
 import pymysql
 import virtualbox
 import virtualbox.library as library
@@ -6,6 +8,7 @@ from virtualbox.library_base import VBoxError
 from configuration import Configuration
 from subprocess import call
 from loggers import LogConfiguration
+from processor import BotMessages
 
 '''
     A script to run the test suite inside a VirtualBox VM. Be warned,
@@ -32,6 +35,80 @@ from loggers import LogConfiguration
 '''
 
 
+def get_last_queue_item(logger):
+    """
+    Fetches the last queue item with the appropriate data.
+
+    :param logger: A logger to log errors/info/etc.
+    :return: A tuple of the result row and the test_id, or None, None in
+    case of failure.
+    """
+    # Obtain the  last queue item (if any)
+    conn = pymysql.connect(host=Configuration.database_host,
+                           user=Configuration.database_user,
+                           passwd=Configuration.database_password,
+                           db=Configuration.database_name,
+                           charset='latin1',
+                           cursorclass=pymysql.cursors.DictCursor)
+    try:
+        with conn.cursor() as c:
+            c.execute(
+                "SELECT test_id FROM test_queue ORDER BY test_id LIMIT 1")
+            result = c.fetchone()
+
+            if result is None:
+                return None, None
+
+            test_id = result['test_id']
+            logger.debug("Processing id {0}".format(test_id))
+            if c.execute("SELECT token, repository, branch, commit_hash, "
+                         "type FROM test WHERE id = %s", (test_id,)) == 1:
+                result = c.fetchone()
+            else:
+                result = None
+    finally:
+        conn.close()
+
+    return result, test_id
+
+
+def abort_queue_item(logger,test_id):
+    """
+    Aborts the given queue item and performs some appropriate tasks (
+    storing message for the GitHub bot to post, marking the entry as
+    finished and removing it from the queue).
+
+    :param logger: A logger instance to log errors/...
+    :param test_id: The id that needs to be aborted
+    :return: A tuple of the new result row and the new test_id, or None,
+    None in case of failure.
+    """
+    logger.info("Aborting test id {0}".format(test_id))
+    conn = pymysql.connect(
+            host=Configuration.database_host,
+            user=Configuration.database_user,
+            passwd=Configuration.database_password,
+            db=Configuration.database_name,
+            charset='latin1',
+            cursorclass=pymysql.cursors.DictCursor)
+    try:
+        with conn.cursor() as c:
+            c.execute("INSERT INTO github_queue VALUES (NULL, %s, %s);",
+                      (test_id, BotMessages.aborted))
+            c.execute("UPDATE test SET `finished` = '1' WHERE `id` = %s;",
+                      (test_id,))
+            c.execute("DELETE FROM test_queue WHERE test_id = %s",(test_id,))
+            conn.commit()
+    except Exception as e:
+        logger.exception(e)
+        conn.rollback()
+        return None, None
+    finally:
+        conn.close()
+
+    return get_last_queue_item(logger)
+
+
 def main(debug=False):
     """
     Loads up the last item from the queue (if any), fetches the information
@@ -42,38 +119,18 @@ def main(debug=False):
     loggers = LogConfiguration(debug)
     logger = loggers.create_logger("VM_Runner")
 
-    conn = pymysql.connect(host=Configuration.database_host,
-                           user=Configuration.database_user,
-                           passwd=Configuration.database_password,
-                           db=Configuration.database_name,
-                           charset='latin1',
-                           cursorclass=pymysql.cursors.DictCursor)
-
     logger.info("Starting VM runner; checking database for work")
-    # Obtain the  last queue item (if any)
-    result = None
-    try:
-        with conn.cursor() as c:
-            c.execute(
-                "SELECT test_id FROM test_queue ORDER BY test_id LIMIT 1")
-            result = c.fetchone()
+    (result, test_id) = get_last_queue_item(logger)
 
-            if result is None:
-                logger.info("No items in queue left; returning...")
-                return
+    if test_id is None or result is None:
+        logger.info("No items in queue left; returning...")
+        return
 
-            test_id = result['test_id']
-            logger.debug("Processing id {0}".format(test_id))
-            c.execute("SELECT token, repository, branch, commit_hash, type "
-                      "FROM test WHERE id = %s", (test_id,))
-            result = c.fetchone()
-            logger.debug("Running tests for {0} (branch {1}, commit {2})"
-                         " with token {3}".format(result['repository'],
-                                                  result['branch'],
-                                                  result['commit_hash'],
-                                                  result['token']))
-    finally:
-        conn.close()
+    logger.debug("Running tests for {0} (branch {1}, commit {2})"
+                 " with token {3}".format(result['repository'],
+                                          result['branch'],
+                                          result['commit_hash'],
+                                          result['token']))
 
     # Setting up VBox
     virtual_box = virtualbox.VirtualBox()
@@ -97,8 +154,56 @@ def main(debug=False):
     if state >= library.MachineState.first_online and state <= \
             library.MachineState.last_online:
         logger.warn("Machine is still running")
-        # TODO: determine if it needs to be powered off instead of running
-        return
+        # If the current id has entries in the test_progess table,
+        # it's presumably running. If not, the machine is still running on
+        # a previous request, which should have terminated the machine.
+        conn = pymysql.connect(
+            host=Configuration.database_host,
+            user=Configuration.database_user,
+            passwd=Configuration.database_password,
+            db=Configuration.database_name,
+            charset='latin1',
+            cursorclass=pymysql.cursors.DictCursor)
+        power_down = False
+        try:
+            with conn.cursor() as c:
+                if c.execute(
+                        "SELECT `time` FROM test_progress WHERE test_id = %s "
+                        "ORDER BY id ASC LIMIT 1", (test_id,)) == 1:
+                    row = c.fetchone()
+                    logger.debug(
+                        "Entries found for current queue item; started "
+                        "processing this item at {0}".format(row['time']))
+                    date = dateutil.parser.parse(row['time'])
+                    delta = datetime.timedelta(
+                        hours=Configuration.max_runtime)
+                    date += delta
+                    logger.debug("Entry should expire after {0}".format(date))
+                    if datetime.datetime.now() >= date:
+                        logger.debug("Timer expired! Removing this item "
+                                     "from the queue and stopping the "
+                                     "machine.")
+                        power_down = True
+                        (result,test_id) = abort_queue_item(logger,test_id)
+                        if test_id is None or result is None:
+                            logger.info(
+                                "No items in queue left; returning...")
+                            return
+                else:
+                    # No entries, machine running, so shut down
+                    logger.debug("No entries for current queue item, "
+                                 "but machine is running...")
+                    power_down = True
+        finally:
+            conn.close()
+
+        if power_down:
+            logger.debug("Will attempt a power down")
+            p = session2.console.power_down()
+            p.wait_for_completion(-1)
+            logger.debug("Should be powered down")
+    else:
+        logger.debug("Machine in powered off state, as expected")
 
     try:
         if session2.machine.current_state_modified:
