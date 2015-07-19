@@ -16,7 +16,7 @@ if(isset($_GET["action"]) && $_GET["action"] === "logout"){
     $_SESSION["login"] = false;
 }
 if($_SESSION["login"]) {
-    echo '<h1>Admin panel</h1>';
+    echo '<html><head><link rel="stylesheet" href="layout.css"></head><body><h1>Admin panel</h1>';
     if (!isset($_GET["action"])) {
 ?>
     <p>Please choose an action:</p>
@@ -34,16 +34,86 @@ if($_SESSION["login"]) {
         ]);
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         echo '<p><a href="admin.php">Return to overview</a></p>';
+        $removeMessage = "The admin removed your request (id {0}) from the queue. Please get in touch to know why.";
+        $abortMessage = "The admin aborted your currently running request (id {0}). Please get in touch to know why.";
         switch($_GET["action"]){
             case "vboxqueue":
+                $message = "";
+                if(isset($_GET["do"]) && isset($_GET["id"])){
+                    switch($_GET["do"]){
+                        case "remove":
+                            if($pdo->beginTransaction()) {
+                                try {
+                                    $m = $pdo->prepare("INSERT INTO github_queue VALUES (NULL, :test_id, :message);");
+                                    $m->bindParam(":test_id",$_GET["id"],PDO::PARAM_INT);
+                                    $m->bindParam(":message",str_replace("{0}",intval($_GET["id"]),$removeMessage),PDO::PARAM_STR);
+                                    $m->execute();
+                                    $m = $pdo->prepare("UPDATE test SET finished = '1' WHERE id = :test_id");
+                                    $m->bindParam(":test_id",$_GET["id"],PDO::PARAM_INT);
+                                    $m->execute();
+                                    $m = $pdo->prepare("DELETE FROM test_queue WHERE test_id = :test_id");
+                                    $m->bindParam(":test_id",$_GET["id"],PDO::PARAM_INT);
+                                    $m->execute();
+                                    $pdo->commit();
+                                    $message = intval($_GET["id"])." was removed from the VBox queue!";
+                                } catch(PDOException $e){
+                                    $pdo->rollBack();
+                                    $message = "Failed to remove";
+                                }
+                            } else {
+                                $message = "Failed to begin remove transaction";
+                            }
+                            break;
+                        case "abort":
+                            if($pdo->beginTransaction()) {
+                                try {
+                                    $m = $pdo->prepare("INSERT INTO github_queue VALUES (NULL, :test_id, :message);");
+                                    $m->bindParam(":test_id",$_GET["id"],PDO::PARAM_INT);
+                                    $m->bindParam(":message",str_replace("{0}",intval($_GET["id"]),$abortMessage),PDO::PARAM_STR);
+                                    $m->execute();
+                                    $m = $pdo->prepare("UPDATE test SET finished = '1' WHERE id = :test_id");
+                                    $m->bindParam(":test_id",$_GET["id"],PDO::PARAM_INT);
+                                    $m->execute();
+                                    $m = $pdo->prepare("INSERT INTO test_progress VALUES (NULL, :test_id, NOW(), 'error', 'aborted by admin');");
+                                    $m->bindParam(":test_id",$_GET["id"],PDO::PARAM_INT);
+                                    $m->execute();
+                                    $m = $pdo->prepare("DELETE FROM test_queue WHERE test_id = :test_id");
+                                    $m->bindParam(":test_id",$_GET["id"],PDO::PARAM_INT);
+                                    $m->execute();
+                                    $pdo->commit();
+                                    $message = intval($_GET["id"])." will be aborted!";
+                                    // Bot will automatically turn off the VM in <= 5 minutes
+                                } catch(PDOException $e){
+                                    $pdo->rollBack();
+                                    $message = "Failed to abort";
+                                }
+                            } else {
+                                $message = "Failed to begin abort transaction";
+                            }
+                            break;
+                        default:
+                            break;
+                    }
+                }
                 echo '<h2>Current VBox queue</h2>';
-                $stmt = $pdo->query("SELECT t.* FROM test_queue q JOIN test t ON q.test_id = t.id ORDER BY t.id ASC;");
+                echo '<p>'.$message.'</p>';
+                $stmt = $pdo->query("SELECT t.id, t.repository, p.`time` FROM test_queue q JOIN test t ON q.test_id = t.id LEFT JOIN test_progress p ON q.`test_id` = p.`test_id` GROUP BY t.id ORDER BY t.`id`, p.`id` ASC;");
                 if($stmt !== false){
                     $data = $stmt->fetchAll();
                     if(sizeof($data) > 0) {
-                        echo '<table><tr><th>ID</th><th>GitHub</th></tr>';
+                        echo '<table><tr><th>ID</th><th>GitHub</th><th>Started on</th><th>Manage</th></tr>';
                         foreach($data as $row){
-                            echo '<tr><td>'.$row['id'].'</td><td>'.$row['repository'].'</td></tr>';
+                            echo '<tr>';
+                            echo '<td><a href="view.php?id='.$row['id'].'">'.$row['id'].'</a></td>';
+                            echo '<td>'.$row['repository'].'</td>';
+                            if(is_null($row['time'])){
+                                echo '<td>Queued</td>';
+                                echo '<td><input type="button" value="Remove" onclick="window.location.href=\'admin.php?action=vboxqueue&do=remove&id='.$row['id'].'\';" /></td>';
+                            } else {
+                                echo '<td>'.$row['time'].'</td>';
+                                echo '<td><input type="button" value="Abort" onclick="window.location.href=\'admin.php?action=vboxqueue&do=abort&id='.$row['id'].'\';" /></td>';
+                            }
+                            echo '</tr>';
                         }
                         echo '</table>';
                     } else {
@@ -54,14 +124,55 @@ if($_SESSION["login"]) {
                 }
                 break;
             case "localqueue":
+                $message = "";
+                if(isset($_GET["do"]) && isset($_GET["id"])){
+                    switch($_GET["do"]){
+                        case "remove":
+                            if($pdo->beginTransaction()) {
+                                try {
+                                    $m = $pdo->prepare("INSERT INTO github_queue VALUES (NULL, :test_id, :message);");
+                                    $m->bindParam(":test_id",$_GET["id"],PDO::PARAM_INT);
+                                    $m->bindParam(":message",str_replace("{0}",intval($_GET["id"]),$removeMessage),PDO::PARAM_STR);
+                                    $m->execute();
+                                    $m = $pdo->prepare("UPDATE test SET finished = '1' WHERE id = :test_id");
+                                    $m->bindParam(":test_id",$_GET["id"],PDO::PARAM_INT);
+                                    $m->execute();
+                                    $m = $pdo->prepare("DELETE FROM local_queue WHERE test_id = :test_id");
+                                    $m->bindParam(":test_id",$_GET["id"],PDO::PARAM_INT);
+                                    $m->execute();
+                                    $pdo->commit();
+                                    $message = intval($_GET["id"])." was removed from the local queue!";
+                                } catch(PDOException $e){
+                                    $pdo->rollBack();
+                                    $message = "Failed to remove";
+                                }
+                            } else {
+                                $message = "Failed to begin remove transaction";
+                            }
+                            break;
+                        default:
+                            break;
+                    }
+                }
                 echo '<h2>Current local queue</h2>';
-                $stmt = $pdo->query("SELECT t.* FROM local_queue q JOIN test t ON q.test_id = t.id ORDER BY t.id ASC;");
+                echo '<p>'.$message.'</p>';
+                $stmt = $pdo->query("SELECT t.id, t.repository, p.`time` FROM local_queue q JOIN test t ON q.test_id = t.id LEFT JOIN test_progress p ON q.`test_id` = p.`test_id` GROUP BY t.id ORDER BY t.`id`, p.`id` ASC;");
                 if($stmt !== false){
                     $data = $stmt->fetchAll();
                     if(sizeof($data) > 0) {
-                        echo '<table><tr><th>ID</th><th>GitHub</th></tr>';
+                        echo '<table><tr><th>ID</th><th>GitHub</th><th>Started on</th><th>Manage</th></tr>';
                         foreach($data as $row){
-                            echo '<tr><td>'.$row['id'].'</td><td>'.$row['repository'].'</td></tr>';
+                            echo '<tr>';
+                            echo '<td><a href="view.php?id='.$row['id'].'">'.$row['id'].'</a></td>';
+                            echo '<td>'.$row['repository'].'</td>';
+                            if(is_null($row['time'])){
+                                echo '<td>Queued</td>';
+                                echo '<td><input type="button" value="Remove" onclick="window.location.href=\'admin.php?action=localqueue&do=remove&id='.$row['id'].'\';" /></td>';
+                            } else {
+                                echo '<td>'.$row['time'].'</td>';
+                                echo '<td>&nbsp;</td>';
+                            }
+                            echo '</tr>';
                         }
                         echo '</table>';
                     } else {
@@ -77,15 +188,14 @@ if($_SESSION["login"]) {
                 if($stmt !== false){
                     $data = $stmt->fetchAll();
                     if(sizeof($data) > 0) {
-                        echo '<table><tr><th>Test
-                        ID</th><th>Time</th><th>Type</th><th>Requested
+                        echo '<table><tr><th>Time</th><th>Command</th><th>Requested
                         by</th><th>Link to comment</th></tr>';
                         foreach($data as $row){
-                            echo '<tr><td>'.$row['test_id'].'</td><td>'
+                            echo '<tr><td>'
                             .$row['time'].'</td><td>'.htmlentities
                             ($row['type']).'</td><td>'.htmlentities
-                            ($row['requester']).'</td><td>'.htmlentities
-                            ($row['link']).'</td></tr>';
+                            ($row['requester']).'</td><td><a href="'.htmlentities
+                            ($row['link']).'">GitHub comment</a></td></tr>';
                         }
                         echo '</table>';
                     } else {
@@ -99,6 +209,7 @@ if($_SESSION["login"]) {
                 break;
         }
     }
+    echo '</body></html>';
 } else {
 ?>
     <h1>Login required</h1>
