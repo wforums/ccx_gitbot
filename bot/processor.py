@@ -201,6 +201,15 @@ class Processor:
             else:
                 self.logger.info("No GitHub items to process")
 
+            # Calling VM part
+            if c.execute("SELECT * FROM test_queue") >= 1:
+                # Run main method of the Python VM script
+                self.logger.info("Call VM script")
+                p = multiprocessing.Process(target=run_vm.main,
+                                            args=(self.debug,))
+                p.start()
+                self.logger.info("VM script launched")
+
         # Closing connection to DB
         self._conn.close()
         self._conn = None
@@ -475,13 +484,6 @@ class Processor:
                 self.logger.debug("Local script returned:")
                 self.logger.debug(fh.read())
                 fh.close()
-            if c.execute("SELECT * FROM test_queue") >= 1:
-                # Run main method of the Python VM script
-                self.logger.info("Call VM script")
-                p = multiprocessing.Process(target=run_vm.main,
-                                            args=(self.debug,))
-                p.start()
-                self.logger.info("VM script launched")
             return insert_id
 
     def store_command(self, timestamp, command_type, user, comment_link):
