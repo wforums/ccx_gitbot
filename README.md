@@ -44,3 +44,13 @@ with the appropriate values.
 ### Worker
 
 Deploy the files in the worker folder to the worker server (which will be running the test-suite on the bare server).
+
+## Contributing
+
+If you want to help this project forward, or have a solution for some of the issues or bugs, don't hesitate to help! You can fork the project, create a branch for the issue/problem/... and afterwards create a pull request for it.
+
+It will be reviewed as soon as possible.
+
+## Security
+
+If you discover any security related issues, please email ccextractor@canihavesome.coffee instead of using the issue tracker.
