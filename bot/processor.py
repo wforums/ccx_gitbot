@@ -270,13 +270,13 @@ class Processor:
 
             message = comment.body
             if not self.contains_mention(message):
-                self.logger.debug("Ignoring comment {0} from {1}, because "
+                self.logger.debug(u"Ignoring comment {0} from {1}, because "
                                   "the content ({2}) does not contain a "
                                   "mention".format(idx, user, message))
                 continue
 
             self.logger.debug(
-                "Processing comment {0}, coming from {1} (content: "
+                u"Processing comment {0}, coming from {1} (content: "
                 "{2})".format(idx, user, message))
             mentioned = True
             if not self.allowed_local(user, fork):
