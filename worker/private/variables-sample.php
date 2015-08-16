@@ -13,3 +13,5 @@ define("CCX_USER_AGENT_S","My user agent here");
 define("MASTER_SERVER_URL","http://my.master.server/fetch.php");
 // Location of the test script
 define("TEST_SCRIPT_LOCATION","/path/to/script/private/runLocal");
+// HMAC key, needs to be the same as the command server one.
+define("HMAC_KEY","my random hmac key here");
