@@ -56,9 +56,13 @@ echo "Tester dir: $testerDir" >> "log.txt"
 
 # Change to github folder
 executeCommand cd "$github"
+# Return to master, so that a possible remove can be executed
+executeCommand git checkout master
 # Update the local repository
 skipRevert=0
 if [ $branch == "-_-" ]; then
+	postStatus "preparation" "git remove PR branch"
+	executeCommand git branch -D pr
 	# This is a PR, so fetch the pull request
 	postStatus "preparation" "git fetch PR"
 	executeCommand git fetch origin "pull/$commit/head:pr"
