@@ -43,3 +43,6 @@ class BotMessages:
     aborted = 'I\'m sorry, but I had to abort the item, because the maximum ' \
               'time elapsed. Please improve the efficiency of your code, or ' \
               'get in touch if you think this is an error.'
+    untrustedUser = 'I\'m sorry, but I cannot allow you to issue commands, as '\
+                    'this repository is ran locally. Please ask a trusted '\
+                    'contributor to run the tests for you instead.'

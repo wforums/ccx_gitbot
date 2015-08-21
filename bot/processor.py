@@ -280,6 +280,10 @@ class Processor:
                 "{2})".format(idx, user, message))
             mentioned = True
             if not self.allowed_local(user, fork):
+                self.g.repos(repository_owner)(
+                    Configuration.repo_name).issues(
+                    initial_id).comments.post(
+                    body=BotMessages.untrustedUser)
                 break
             if self.process_comment(message, initial_type, initial_id,
                                     repository_owner, fork, user,
@@ -296,6 +300,13 @@ class Processor:
 
             if not self.contains_mention(message):
                 return
+
+            if not self.allowed_local(user, fork):
+                self.g.repos(repository_owner)(
+                    Configuration.repo_name).issues(
+                    initial_id).comments.post(
+                    body=BotMessages.untrustedUser)
+                
             self.process_comment(message, initial_type, initial_id,
                                  repository_owner, fork, user,
                                  initial.html_url, initial.created_at)
