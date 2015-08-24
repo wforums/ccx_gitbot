@@ -306,7 +306,7 @@ class Processor:
                     Configuration.repo_name).issues(
                     initial_id).comments.post(
                     body=BotMessages.untrustedUser)
-                
+
             self.process_comment(message, initial_type, initial_id,
                                  repository_owner, fork, user,
                                  initial.html_url, initial.created_at)
