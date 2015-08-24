@@ -12,7 +12,7 @@ if [ -z "$1" ]; then
 	echo "Need to provide a version!"
 	exit
 fi
-wget https://github.com/wforums/CCExtractorTester/releases/download/$1/CCExtractorTester.tar.gz
+wget https://github.com/canihavesomecoffee/ccx_testsuite/releases/download/$1/CCExtractorTester.tar.gz
 tar -xf CCExtractorTester.tar.gz
 cd CCExtractorTester
 chmod 700 CCExtractorTester.exe
