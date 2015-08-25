@@ -88,8 +88,8 @@ if [ $skipRevert -eq 0]; then
 	# Reset head to the commit
 	executeCommand git reset --hard $commit
 fi
-
-postStatus "preparation" "building CCExtractor"
+postStatus "preparation" "finished Git actions"
+postStatus "preparation" "compiling CCExtractor"
 # Go to linux build folder
 executeCommand cd linux
 # Build CCExtractor using the bash build script
@@ -97,17 +97,19 @@ executeCommand cd linux
 # Check if build succeeded
 if [ -x "ccextractor" ]; then
 	chmod 700 ccextractor
+	postStatus "preparation" "finished compiling CCExtractor"
 	# Run testSuite
-	postStatus "running" "test suite"
+	postStatus "running" "started test suite"
 	executeCommand cd "$testerDir"
 	executeCommand $tester -c $config -t $testFile -e "$github/linux/ccextractor" -o 3000 -f $resultFolder -s $sampleFolder -r $reportFolder
+	postStatus "running" "finished running test suite"
 	# Upload results
 	postStatus "finalization" "uploading result files"
 	for f in $(find $reportFolder -name "*.html");
 	do
 		curl -A "$userAgent" --form "token=$token" --form "type=upload" --form "html=@$f" -w "\n" $reportURL >> "$reportFolder/log.html"
 	done
-	postStatus "finalized" "finished"
+	postStatus "finalized" "finished complete run"
 	# Clean report folder
     rm -rf $reportFolder/*
 else
