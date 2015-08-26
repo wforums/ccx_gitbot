@@ -223,24 +223,34 @@ class Processor:
         :return: A dictionary with the full repository name as key and the git
         as value.
         """
-        repository = self.g.repos(Configuration.repo_owner)(
-            Configuration.repo_name).get()
-        forks = self.g.repos(Configuration.repo_owner)(
-            Configuration.repo_name).forks().get()
         names = {}
         self.logger.info("Fetching GitHub forks of {0}".format(
             Configuration.repo_name))
-        for fork in forks:
-            self.logger.debug("Processing fork: {0}".format(fork.full_name))
-            if not fork.private:
-                self.logger.debug("Added fork to the list")
-                names[fork.full_name] = fork.git_url
+
+        page = 1
+        while True:
+            forks = self.g.repos(Configuration.repo_owner)(
+                Configuration.repo_name).forks().get(page=page)
+
+            if len(forks) > 0:
+                page = page + 1
+                for fork in forks:
+                    self.logger.debug("Processing fork: {0}".format(fork.full_name))
+                    if not fork.private:
+                        self.logger.debug("Added fork to the list")
+                        names[fork.full_name] = fork.git_url
+                    else:
+                        self.logger.warn(
+                            "Skipped {0} because it's a private fork".format(
+                                fork.full_name))
             else:
-                self.logger.warn(
-                    "Skipped {0} because it's a private fork".format(
-                        fork.full_name))
+                break
+
         # Don't forget to add the original too
+        repository = self.g.repos(Configuration.repo_owner)(
+            Configuration.repo_name).get()
         names[repository.full_name] = repository.git_url
+        # End of obtaining forks
         self.logger.info("Found {0} valid forks".format(len(names)))
         return names
 
