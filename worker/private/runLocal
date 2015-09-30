@@ -57,7 +57,7 @@ echo "Tester dir: $testerDir" >> "log.txt"
 # Change to github folder
 executeCommand cd "$github"
 # Return to master, so that a possible remove can be executed
-executeCommand git checkout master
+executeCommand git checkout -f master
 # Update the local repository
 skipRevert=0
 if [ $branch == "-_-" ]; then
@@ -75,6 +75,18 @@ else
 	status=$?
 	if [ $status -gt 1 ]; then
 		echo "Git fetch failed: $status"
+		haltAndCatchFire "" # No message needed as we post before anyway
+	fi
+fi
+
+postStatus "preparation" "commit check"
+if [ $skipRevert -eq 0 ]; then
+	# Check if the commit is in the branch we are going to switch to later
+	contains="$(git branch -r --contains $commit | grep $branch)"
+	status=$?
+	if [ $status -eq 1 ]; then
+		echo "$commit does not exist in $branch"
+		echo $contains
 		haltAndCatchFire "" # No message needed as we post before anyway
 	fi
 fi
