@@ -113,17 +113,17 @@ if [ -x "ccextractor" ]; then
 	chmod 700 ccextractor
 	postStatus "preparation" "finished compiling CCExtractor"
 	# Run testSuite
-	postStatus "running" "started test suite"
+	postStatus "tests" "started test suite"
 	executeCommand cd "$testerDir"
 	executeCommand $tester -c $config -t $testFile -e "$github/linux/ccextractor" -o 3000 -f $resultFolder -s $sampleFolder -r $reportFolder
-	postStatus "running" "finished running test suite"
+	postStatus "tests" "finished running test suite"
 	# Upload results
-	postStatus "finalization" "uploading result files"
+	postStatus "finalisation" "uploading result files"
 	for f in $(find $reportFolder -name "*.html");
 	do
 		curl -A "$userAgent" --form "token=$token" --form "type=upload" --form "html=@$f" -w "\n" $reportURL >> "$reportFolder/log.html"
 	done
-	postStatus "finalized" "finished complete run"
+	postStatus "finalisation" "finished complete run"
 	# Clean report folder
     rm -rf $reportFolder/*
 else
