@@ -115,7 +115,7 @@ if [ -x "ccextractor" ]; then
 	# Run testSuite
 	postStatus "tests" "started test suite"
 	executeCommand cd "$testerDir"
-	executeCommand $tester -c $config -t $testFile -e "$github/linux/ccextractor" -o 3000 -f $resultFolder -s $sampleFolder -r $reportFolder
+	executeCommand $tester --config $config --entries $testFile --executable "$github/linux/ccextractor" --timeout 3000 --resultfolder $resultFolder --samplefolder $sampleFolder --reportfolder $reportFolder
 	postStatus "tests" "finished running test suite"
 	# Upload results
 	postStatus "finalisation" "uploading result files"
