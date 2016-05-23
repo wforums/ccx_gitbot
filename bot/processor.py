@@ -302,7 +302,6 @@ class Processor:
 
         if not mentioned:
             self.logger.debug("Parsing original comment")
-            user = initial.user.login
             if initial_type == "Commit":
                 message = initial.commit.message
             else:
@@ -311,11 +310,13 @@ class Processor:
             if not self.contains_mention(message):
                 return
 
+            user = initial.user.login
             if not self.allowed_local(user, fork):
                 self.g.repos(repository_owner)(
                     Configuration.repo_name).issues(
                     initial_id).comments.post(
                     body=BotMessages.untrustedUser)
+                return
 
             self.process_comment(message, initial_type, initial_id,
                                  repository_owner, fork, user,
